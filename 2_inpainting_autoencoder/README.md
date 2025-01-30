@@ -20,6 +20,7 @@ pip install -r requirements.txt
 --coverage       Fraction of pixels to set to 0 (black) in mask 
 --batch_size     The number of images in each mini-batch
 --model_out      Directory to save trained autoencoder
+--num_show       Number of reconstructed images to display
 ```
 
 **Example**
