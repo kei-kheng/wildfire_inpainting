@@ -1,5 +1,5 @@
 # Description
-This code attempts to train an inpainting/denoising autoencoder using 400 128x128 masked images of ellipses.
+An an extension of the previous convolutional autoencoder (CAE), this code attempts to perform image inpainting on colour-coded (function of fire intensity), 720x720 ellipses. The dataset was generated using `main_batch.py` in coloured_ellipses_generator.
 
 # Setting Up
 **Anaconda:**
@@ -25,8 +25,12 @@ pip install -r requirements.txt
 
 **Example**
 ```
-python main.py --data_dir dataset/training --epochs 5 --coverage 0.3 --batch_size 8 --model_out model/inpainting_autoencoder.pth --num_show 5
+python main.py --data_dir dataset_1000_images/training --epochs 5 --coverage 0.3 --batch_size 8 --model_out model/inpainting_autoencoder.pth  --num_show 10
 ```
 
 # Results
-The model was trained using masked inputs. From the execution of main.py, it could be seen that this inpainting autoencoder could reconstruct the missing pieces better than the autoencoder which was trained using intact images.
+For low number of epochs e.g., 1, 2, the model was only able to reconstruct the shape accurately, but not the colour. Accurate reconstruction was achieved by training the model on 1000 images with 30% noise over 5 epochs.
+
+# Possible improvements to model architecture
+- Use U-Nets (skip connection)
+- Switch to GAN-based (Generative Adversarial Networks) methods

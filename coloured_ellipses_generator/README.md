@@ -1,5 +1,5 @@
 # Description
-This directory contains 3 versions of code that generates synthetic images of colour-coded (function of fire intensity) ellipses.
+This directory contains 3 versions of code that generate synthetic images of colour-coded (function of fire intensity) ellipses.
 - **main_with_axes_backup.py** - Oldest workable version of the code, generates a single image with labels, axes and colourbar.
 - **main_single_image.py** - Generates a single image without labels, axes and colourbar.
 - **main_batch.py** - Generates a batch of images with randomized maximum intensity, wind, wind speed and wind direction.
