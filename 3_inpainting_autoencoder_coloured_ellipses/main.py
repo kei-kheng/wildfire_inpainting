@@ -181,23 +181,22 @@ def main():
 
         ax1 = plt.subplot(num_show, 3, i * 3 + 1)
         # No cmap to show true RGB
+        # Original
         plt.imshow(orig)
         plt.axis("off")
-        plt.title("Original")
 
+        # Masked
         ax2 = plt.subplot(num_show, 3, i * 3 + 2)
         plt.imshow(mskd)
         plt.axis("off")
-        plt.title("Masked")
 
+        # Reconstructed
         ax3 = plt.subplot(num_show, 3, i * 3 + 3)
         plt.imshow(rcn)
         plt.axis("off")
-        plt.title("Reconstructed")
 
     plt.tight_layout()
     plt.show()
-
 
 if __name__ == "__main__":
     main()
