@@ -210,17 +210,14 @@ def main():
 
         ax1 = plt.subplot(num_show, 3, i * 3 + 1)
         plt.imshow(orig, cmap="gray")
-        plt.title("Original")
         plt.axis("off")
 
         ax2 = plt.subplot(num_show, 3, i * 3 + 2)
         plt.imshow(mskd, cmap="gray")
-        plt.title("Masked")
         plt.axis("off")
 
         ax3 = plt.subplot(num_show, 3, i * 3 + 3)
         plt.imshow(rcn, cmap="gray")
-        plt.title("Reconstructed")
         plt.axis("off")
 
     plt.tight_layout()
