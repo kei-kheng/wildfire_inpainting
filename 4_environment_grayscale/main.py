@@ -27,7 +27,6 @@ def main():
     parser.add_argument("--env_img", type=str, default="images/default.png")
     parser.add_argument("--img_size", type=int, nargs=2, default=[128, 128])
     parser.add_argument("--model_path", type=str, default="models/inpainting_autoencoder_grayscale.pth")
-    parser.add_argument("--scale", type=int, default=5)
     parser.add_argument("--agent_patch_size", type=int, default=9)
     parser.add_argument("--steps", type=int, default=1000)
     args = parser.parse_args()
@@ -54,7 +53,7 @@ def main():
     pygame.init()
 
     # Scale image by some factor
-    scale = args.scale
+    scale = 5
     # Number of columns to display
     col = 4
     w_width = args.img_size[0] * scale * col
@@ -71,7 +70,7 @@ def main():
     env_img = Image.open(args.env_img).convert("L")
     # Reference: https://www.geeksforgeeks.org/how-to-convert-images-to-numpy-array/
     env_array = np.array(env_img)
-    env_surface = array_to_surface(env_array, args.scale)
+    env_surface = array_to_surface(env_array, 5)
 
     for step in range(args.steps):
         pygame.display.set_caption("Single-Agent Exploration: Grayscale t = {}".format(step))
@@ -97,9 +96,9 @@ def main():
         agent1.measure(env_array)
 
         observed_array = agent1.get_observation()
-        observed_surface = array_to_surface(observed_array, args.scale)
+        observed_surface = array_to_surface(observed_array, 5)
         screen.blit(observed_surface, (w_width * (1.0/4.0), 40))
-        agent1.draw(screen, args.scale, w_width * (1.0/4.0))
+        agent1.draw(screen, 5, w_width * (1.0/4.0))
 
         # 3rd column - Explored Region
         text_surface = w_font.render("Explored Region", False, (0, 0, 0))
@@ -107,7 +106,7 @@ def main():
 
         explored_array = agent1.get_explored()
         # Multiplication by 255 here is necessary. Else, the surface appears entirely black throughout the simulation.
-        explored_surface = array_to_surface(explored_array, args.scale, multiply_255=True)
+        explored_surface = array_to_surface(explored_array, 5, multiply_255=True)
         screen.blit(explored_surface, (w_width * (2.0/4.0), 40))
 
         # 4th column - Prediction
@@ -125,7 +124,7 @@ def main():
 
         # Move to CPU, convert to (H, W) NumPy array
         predicted_array = predicted_tensor.cpu().numpy().squeeze()
-        predicted_surface = array_to_surface(predicted_array, args.scale, multiply_255=True)
+        predicted_surface = array_to_surface(predicted_array, 5, multiply_255=True)
         screen.blit(predicted_surface, (w_width * (3.0/4.0), 40))
 
         pygame.display.flip()
