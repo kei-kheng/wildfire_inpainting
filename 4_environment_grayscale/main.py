@@ -113,7 +113,8 @@ def main():
         text_surface = w_font.render("Prediction", False, (0, 0, 0))
         screen.blit(text_surface, (w_width * (3.0/4.0), 0))
 
-        # Convert observation_array to tensor
+        # Convert observation_array to tensor (float32)
+        # Reference: https://stackoverflow.com/questions/74848349/pytorch-runtime-error-input-type-double-and-bias-type-float-should-be-the-s
         observed_array_copy = observed_array.astype(np.float32)
         observed_tensor = torch.from_numpy(observed_array_copy)
         # Model expects (1, 1, H, W)
