@@ -8,6 +8,10 @@ Implement a generative model to perform image inpainting on lossy images of wild
 # Project Progress
 Sucessful implementation of single-agent exploration scenario for grayscale ellipses. However, it was realised that the current model architecture only performs denoising and not inpainting. The next steps are:
 - [ ] Revise model architecture to perform inpainting on grayscale images
+    - Options: 
+        - U-Net
+        - Partial convolution: https://arxiv.org/abs/1804.07723, https://github.com/NVIDIA/partialconv
+        - Gated convolution: https://arxiv.org/abs/1806.03589, https://github.com/JiahuiYu/generative_inpainting
 - [ ] Decouple encoder and decoder (might be unnecessary)
 - [ ] Dataset: Export individual frames from .seq files (provided by Zak) as JPG/PNG
 - [ ] Perform inpainting on RGB images
