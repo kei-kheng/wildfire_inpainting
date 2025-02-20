@@ -24,7 +24,7 @@ def array_to_surface(nparray, scale, multiply_255=False):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--env_img", type=str, default="images/default.png")
+    parser.add_argument("--env_img", type=str, default="environment/default.png")
     parser.add_argument("--img_size", type=int, nargs=2, default=[128, 128])
     parser.add_argument("--model_path", type=str, default="models/inpainting_autoencoder_grayscale.pth")
     parser.add_argument("--agent_patch_size", type=int, default=9)
