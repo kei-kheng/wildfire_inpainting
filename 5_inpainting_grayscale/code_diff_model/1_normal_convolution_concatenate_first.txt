@@ -1,0 +1,62 @@
+# Decoupled encoder and decoder, encapsulated both in ConvAutoencoder
+# An alternative (more intuitive) way to define the CAE, nn.Sequential() is just a sequential container
+# Reference: https://www.geeksforgeeks.org/implement-convolutional-autoencoder-in-pytorch-with-cuda/
+
+
+# Encoder
+class Encoder(nn.Module):
+    def __init__(self):
+        # super() without arguments automatically infers the class and instance -> Simpler Python 3 syntax
+        # Reference: https://discuss.pytorch.org/t/super-init-vs-super-classname-self-init/148793/2
+        super().__init__()
+
+        self.encoder = nn.Sequential(
+            nn.Conv2d(2, 32, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+        )
+
+    def forward(self, x, m):
+        c = torch.cat([x, m], dim=1)
+        out = self.encoder(c)
+        return out
+
+
+# ConvTranspose2d equation: Output size = (Input size − 1) × stride − 2 × padding + kernel_size + output_padding
+
+
+# Decoder
+class Decoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.deconv = nn.Sequential(
+            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, 1, kernel_size=4, stride=2, padding=1),
+            nn.Sigmoid(),
+        )
+
+    def forward(self, d):
+        d = self.deconv(d)
+        return d
+
+
+# Encapsulate in ConvAutoencoder
+class ConvAutoencoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.encoder = Encoder()
+        self.decoder = Decoder()
+
+    def forward(self, x, m):
+        encoded = self.encoder(x, m)
+        out = self.decoder(encoded)
+        return out
