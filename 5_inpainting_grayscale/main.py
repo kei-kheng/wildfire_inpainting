@@ -169,6 +169,11 @@ def main():
         dataset, [train_size, test_size]
     )
 
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    if device == "cuda":
+        num_workers = torch.cuda.device_count() * 4
+    print("Using device:", device)
+
     """
     Specified num_workers for faster data loading
     - num_workers > 0: Tells PyTorch to use multiple subprocesses to load data in parallel
@@ -179,19 +184,16 @@ def main():
         train_dataset,
         batch_size=args.batch_size,
         shuffle=True,
-        num_workers=4,
+        num_workers=num_workers,
         pin_memory=True,
     )
     test_loader = DataLoader(
         test_dataset,
         batch_size=args.batch_size,
         shuffle=False,
-        num_workers=4,
+        num_workers=num_workers,
         pin_memory=True,
     )
-
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    print("Using device:", device)
 
     model = PartialConvAutoencoder().to(device)
     criterion = nn.MSELoss()
