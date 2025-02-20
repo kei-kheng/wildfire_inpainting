@@ -29,14 +29,29 @@ class EllipseDataset(Dataset):
         return img
 
 
+# Modified to create a square-shaped hole centered around a random point in the image
 def create_random_mask(height=128, width=128, coverage=0.3):
     mask = np.ones((1, height, width), dtype=np.float32)
-    num_pixels = height * width
-    num_mask = int(num_pixels * coverage)
-    coords = np.random.choice(num_pixels, num_mask, replace=False)
-    mask_flat = mask.reshape(-1)
-    mask_flat[coords] = 0.0
-    return mask_flat.reshape(1, height, width)
+    mask_area = int(coverage * height * width)
+    side_length = max(int(np.sqrt(mask_area)), 1)
+
+    # Choose a center such that square stays inside image
+    half_side = side_length // 2
+    center_x = np.random.randint(half_side, height - half_side)
+    center_y = np.random.randint(half_side, width - half_side)
+
+    # Compute the square boundaries
+    start_x = center_x - half_side
+    end_x = start_x + side_length
+    start_y = center_y - half_side
+    end_y = start_y + side_length
+
+    """
+    mask's shape: (1, H, W).
+    - mask[0, ...]: Select first (and only) channel
+    """
+    mask[0, start_x:end_x, start_y:end_y] = 0.0
+    return mask
 
 
 def apply_random_mask(batch, coverage=0.3):
@@ -54,48 +69,88 @@ def apply_random_mask(batch, coverage=0.3):
     return masked, masks
 
 
+# Decoupled encoder and decoder, encapsulated both in ConvAutoencoder
 # An alternative (more intuitive) way to define the CAE, nn.Sequential() is just a sequential container
 # Reference: https://www.geeksforgeeks.org/implement-convolutional-autoencoder-in-pytorch-with-cuda/
-class ConvAutoencoder(nn.Module):
+
+
+# Encoder
+class Encoder(nn.Module):
     def __init__(self):
-        super(ConvAutoencoder, self).__init__()
-        # Encoder
-        self.encoder = nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size=4, stride=1, padding=1),
+        # super() without arguments automatically infers the class and instance -> Simpler Python 3 syntax
+        # Reference: https://discuss.pytorch.org/t/super-init-vs-super-classname-self-init/148793/2
+        super().__init__()
+
+        # Image encoding path
+        self.img_conv = nn.Sequential(
+            nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
-            nn.Conv2d(32, 64, kernel_size=4, stride=1, padding=1),
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
-            nn.Conv2d(64, 128, kernel_size=4, stride=1, padding=1),
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
         )
 
-        self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2),
+        # Mask encoding path (Downsampled thrice -> 1/8 of original size)
+        self.mask_pool = nn.MaxPool2d(kernel_size=8, stride=8)
+
+    def forward(self, x, m):
+        x = self.img_conv(x)
+        m = self.mask_pool(m)
+
+        # Concatenate
+        # Example: img has shape (1, 128, 128), mask has shape (1, 128, 128), concatenating along channel dimension gives c with shape (2, 128, 128)
+        c = torch.cat([x, m], dim=1)
+        return c
+
+
+# ConvTranspose2d equation: Output size = (Input size − 1) × stride − 2 × padding + kernel_size + output_padding
+
+
+# Decoder
+class Decoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.deconv = nn.Sequential(
+            # 129 because of the concatenation
+            nn.ConvTranspose2d(129, 64, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
-            nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2),
+            nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
-            nn.ConvTranspose2d(32, 1, kernel_size=4, stride=2),
+            nn.ConvTranspose2d(32, 1, kernel_size=4, stride=2, padding=1),
             nn.Sigmoid(),
         )
 
-    def forward(self, x):
-        x = self.encoder(x)
-        x = self.decoder(x)
-        return x
+    def forward(self, d):
+        d = self.deconv(d)
+        return d
+
+
+# Encapsulate in ConvAutoencoder
+class ConvAutoencoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.encoder = Encoder()
+        self.decoder = Decoder()
+
+    def forward(self, x, m):
+        encoded = self.encoder(x, m)
+        out = self.decoder(encoded)
+        return out
 
 
 # Training
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_dir", type=str, default="dataset/training")
+    parser.add_argument("--data_dir", type=str, default="dataset")
     parser.add_argument("--epochs", type=int, default=5)
-    parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--batch_size", type=int, default=10)
     parser.add_argument("--coverage", type=float, default=0.3)
     parser.add_argument(
-        "--model_out", type=str, default="model/inpainting_color_autoencoder.pth"
+        "--model_out", type=str, default="model/inpainting_grayscale_autoencoder.pth"
     )
     parser.add_argument("--num_show", type=int, default=5)
     args = parser.parse_args()
@@ -111,8 +166,26 @@ def main():
         dataset, [train_size, test_size]
     )
 
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
+    """
+    Specified num_workers for faster data loading
+    - num_workers > 0: Tells PyTorch to use multiple subprocesses to load data in parallel
+        -> Wrap main code inside *** (see bottom) to avoid recursive process spawning!
+    - pin_memory=True: Useful when transferring data to the GPU, as it can speed up the host-to-device transfer
+    """
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=4,
+        pin_memory=True,
+    )
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=4,
+        pin_memory=True,
+    )
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Using device:", device)
@@ -127,9 +200,9 @@ def main():
 
         for images in train_loader:
             images = images.to(device)
-            masked_imgs, _ = apply_random_mask(images, coverage=args.coverage)
+            masked_imgs, masks = apply_random_mask(images, coverage=args.coverage)
 
-            outputs = model(masked_imgs)  # Forward pass
+            outputs = model(masked_imgs, masks)  # Forward pass
             loss = criterion(outputs, images)  # Calculate MSE
 
             optimizer.zero_grad()
@@ -146,8 +219,8 @@ def main():
         with torch.no_grad():
             for images in test_loader:
                 images = images.to(device)
-                masked_imgs, _ = apply_random_mask(images, coverage=args.coverage)
-                outputs = model(masked_imgs)
+                masked_imgs, masks = apply_random_mask(images, coverage=args.coverage)
+                outputs = model(masked_imgs, masks)
                 loss = criterion(outputs, images)
                 test_loss += loss.item() * images.size(0)
         test_loss /= len(test_loader.dataset)
@@ -166,26 +239,31 @@ def main():
     sample_batch = next(iter(test_loader))
     sample_batch = sample_batch.to(device)
 
-    masked_imgs, _ = apply_random_mask(sample_batch, coverage=args.coverage)
+    masked_imgs, masks = apply_random_mask(sample_batch, coverage=args.coverage)
     with torch.no_grad():
-        recon = model(masked_imgs)
+        recon = model(masked_imgs, masks)
 
     num_show = min(args.num_show, sample_batch.shape[0])
-    plt.figure(figsize=(10, 4))
+    plt.figure(figsize=(12, 4))
     for i in range(num_show):
         orig = sample_batch[i].cpu().numpy().squeeze()
+        m = masks[i].cpu().numpy().squeeze()
         mskd = masked_imgs[i].cpu().numpy().squeeze()
         rcn = recon[i].cpu().numpy().squeeze()
 
-        ax1 = plt.subplot(num_show, 3, i * 3 + 1)
+        ax1 = plt.subplot(num_show, 4, i * 4 + 1)
         plt.imshow(orig, cmap="gray")
         plt.axis("off")
 
-        ax2 = plt.subplot(num_show, 3, i * 3 + 2)
+        ax2 = plt.subplot(num_show, 4, i * 4 + 2)
         plt.imshow(mskd, cmap="gray")
         plt.axis("off")
 
-        ax3 = plt.subplot(num_show, 3, i * 3 + 3)
+        ax3 = plt.subplot(num_show, 4, i * 4 + 3)
+        plt.imshow(m, cmap="gray")
+        plt.axis("off")
+
+        ax4 = plt.subplot(num_show, 4, i * 4 + 4)
         plt.imshow(rcn, cmap="gray")
         plt.axis("off")
 
@@ -193,5 +271,6 @@ def main():
     plt.show()
 
 
+# ***
 if __name__ == "__main__":
     main()
