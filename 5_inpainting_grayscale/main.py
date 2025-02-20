@@ -81,9 +81,8 @@ class Encoder(nn.Module):
         # Reference: https://discuss.pytorch.org/t/super-init-vs-super-classname-self-init/148793/2
         super().__init__()
 
-        # Image encoding path
-        self.img_conv = nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1),
+        self.encoder = nn.Sequential(
+            nn.Conv2d(2, 32, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
             nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
@@ -94,17 +93,10 @@ class Encoder(nn.Module):
             nn.MaxPool2d(kernel_size=2, stride=2),
         )
 
-        # Mask encoding path (Downsampled thrice -> 1/8 of original size)
-        self.mask_pool = nn.MaxPool2d(kernel_size=8, stride=8)
-
     def forward(self, x, m):
-        x = self.img_conv(x)
-        m = self.mask_pool(m)
-
-        # Concatenate
-        # Example: img has shape (1, 128, 128), mask has shape (1, 128, 128), concatenating along channel dimension gives c with shape (2, 128, 128)
         c = torch.cat([x, m], dim=1)
-        return c
+        out = self.encoder(c)
+        return out
 
 
 # ConvTranspose2d equation: Output size = (Input size − 1) × stride − 2 × padding + kernel_size + output_padding
@@ -115,8 +107,7 @@ class Decoder(nn.Module):
     def __init__(self):
         super().__init__()
         self.deconv = nn.Sequential(
-            # 129 because of the concatenation
-            nn.ConvTranspose2d(129, 64, kernel_size=4, stride=2, padding=1),
+            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
             nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
@@ -247,23 +238,18 @@ def main():
     plt.figure(figsize=(12, 4))
     for i in range(num_show):
         orig = sample_batch[i].cpu().numpy().squeeze()
-        m = masks[i].cpu().numpy().squeeze()
         mskd = masked_imgs[i].cpu().numpy().squeeze()
         rcn = recon[i].cpu().numpy().squeeze()
 
-        ax1 = plt.subplot(num_show, 4, i * 4 + 1)
+        ax1 = plt.subplot(num_show, 3, i * 3 + 1)
         plt.imshow(orig, cmap="gray")
         plt.axis("off")
 
-        ax2 = plt.subplot(num_show, 4, i * 4 + 2)
+        ax2 = plt.subplot(num_show, 3, i * 3 + 2)
         plt.imshow(mskd, cmap="gray")
         plt.axis("off")
 
-        ax3 = plt.subplot(num_show, 4, i * 4 + 3)
-        plt.imshow(m, cmap="gray")
-        plt.axis("off")
-
-        ax4 = plt.subplot(num_show, 4, i * 4 + 4)
+        ax3 = plt.subplot(num_show, 3, i * 3 + 3)
         plt.imshow(rcn, cmap="gray")
         plt.axis("off")
 
