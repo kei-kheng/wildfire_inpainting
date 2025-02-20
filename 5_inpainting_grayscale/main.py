@@ -55,7 +55,6 @@ def create_random_mask(height=128, width=128, coverage=0.3):
     mask[0, start_x:end_x, start_y:end_y] = 0.0
     return mask
 
-
 def apply_random_mask(batch, coverage=0.3):
     B, _, H, W = batch.shape
     masked = []
@@ -70,70 +69,81 @@ def apply_random_mask(batch, coverage=0.3):
     masks = torch.cat(masks, dim=0)  # (B,1,H,W)
     return masked, masks
 
-
-# Decoupled encoder and decoder, encapsulated both in ConvAutoencoder
-# An alternative (more intuitive) way to define the CAE, nn.Sequential() is just a sequential container
-# Reference: https://www.geeksforgeeks.org/implement-convolutional-autoencoder-in-pytorch-with-cuda/
-
-
+# Modified code to use partial convolution from https://github.com/NVIDIA/partialconv/tree/master
+# For grayscale images, multi_channel=False
 # Encoder
-class Encoder(nn.Module):
+class PConvEncoder(nn.Module):
     def __init__(self):
-        # super() without arguments automatically infers the class and instance -> Simpler Python 3 syntax
-        # Reference: https://discuss.pytorch.org/t/super-init-vs-super-classname-self-init/148793/2
         super().__init__()
-
-        self.encoder = nn.Sequential(
-            nn.Conv2d(2, 32, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2),
-            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2),
-            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2),
-        )
-
+        # return_mask=True to return updated mask
+        # Downsample 128->64->32->16
+        self.enc1 = PartialConv2d(in_channels=1, out_channels=32, 
+                                  kernel_size=4, stride=2, padding=1,
+                                  multi_channel=False, return_mask=True)
+        self.enc2 = PartialConv2d(in_channels=32, out_channels=64, 
+                                  kernel_size=4, stride=2, padding=1,
+                                  multi_channel=False, return_mask=True)
+        self.enc3 = PartialConv2d(in_channels=64, out_channels=128, 
+                                  kernel_size=4, stride=2, padding=1,
+                                  multi_channel=False, return_mask=True)
+    
     def forward(self, x, m):
-        c = torch.cat([x, m], dim=1)
-        out = self.encoder(c)
-        return out
+        x1, m1 = self.enc1(x, m)  
+        x1 = F.relu(x1)
 
+        x2, m2 = self.enc2(x1, m1)
+        x2 = F.relu(x2)
 
-# ConvTranspose2d equation: Output size = (Input size − 1) × stride − 2 × padding + kernel_size + output_padding
+        x3, m3 = self.enc3(x2, m2)
+        x3 = F.relu(x3)
 
+        return x3, m3
 
 # Decoder
-class Decoder(nn.Module):
+class PConvDecoder(nn.Module):
     def __init__(self):
         super().__init__()
-        self.deconv = nn.Sequential(
-            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),
-            nn.ReLU(),
-            nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),
-            nn.ReLU(),
-            nn.ConvTranspose2d(32, 1, kernel_size=4, stride=2, padding=1),
-            nn.Sigmoid(),
-        )
+        # https://stackoverflow.com/questions/53654310/what-is-the-difference-between-upsampling2d-and-conv2dtranspose-functions-in-ker
+        self.upsample = nn.Upsample(scale_factor=2, mode='nearest')
 
-    def forward(self, d):
-        d = self.deconv(d)
-        return d
-
-
-# Encapsulate in ConvAutoencoder
-class ConvAutoencoder(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.encoder = Encoder()
-        self.decoder = Decoder()
+        self.dec1 = PartialConv2d(in_channels=128, out_channels=64, 
+                                  kernel_size=3, stride=1, padding=1,
+                                  multi_channel=False, return_mask=True)
+        self.dec2 = PartialConv2d(in_channels=64, out_channels=32, 
+                                  kernel_size=3, stride=1, padding=1,
+                                  multi_channel=False, return_mask=True)
+        self.dec3 = PartialConv2d(in_channels=32, out_channels=1, 
+                                  kernel_size=3, stride=1, padding=1,
+                                  multi_channel=False, return_mask=True)
 
     def forward(self, x, m):
-        encoded = self.encoder(x, m)
-        out = self.decoder(encoded)
-        return out
+        x = self.upsample(x)   
+        m = self.upsample(m)
+        x1, m1 = self.dec1(x, m)
+        x1 = F.relu(x1)
 
+        x2 = self.upsample(x1) 
+        m2 = self.upsample(m1)
+        x2, m2 = self.dec2(x2, m2)
+        x2 = F.relu(x2)
+
+        x3 = self.upsample(x2) 
+        m3 = self.upsample(m2)
+        x3, m3 = self.dec3(x3, m3)
+        x3 = torch.sigmoid(x3)
+
+        return x3
+
+class PartialConvAutoencoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.encoder = PConvEncoder()
+        self.decoder = PConvDecoder()
+
+    def forward(self, x, m):
+        encoded, updated_mask = self.encoder(x, m)
+        out = self.decoder(encoded, updated_mask)
+        return out
 
 # Training
 def main():
@@ -183,7 +193,7 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Using device:", device)
 
-    model = ConvAutoencoder().to(device)
+    model = PartialConvAutoencoder().to(device)
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
