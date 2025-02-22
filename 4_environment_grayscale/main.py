@@ -1,6 +1,7 @@
 import argparse
 import pygame
 import numpy as np
+import random
 from PIL import Image
 
 import torch
@@ -39,15 +40,31 @@ def main():
     model.eval()
     print(f"Loaded model from '{args.model_path}'")
 
-    # Instantiate agent at a random starting position
-    # agent1 = Agent(start_pos=(random.randint(0, args.img_size[0]), random.randint(0, args.img_size[1])), 
-    #                map_size=(args.img_size[0],args.img_size[1]), 
-    #                patch_size=args.agent_patch_size)
+    # Initialize 'observed' and 'explored' maps of multi-agent system
+    observed_map = np.zeros((args.img_size[0], args.img_size[1]), dtype=np.float32)
+    explored_map = np.zeros((args.img_size[0], args.img_size[1]), dtype=np.float32)
 
-    # Instantiate agent at centre
-    agent1 = Agent(start_pos=(args.img_size[0]//2, args.img_size[1]//2), 
-                   map_size=(args.img_size[0],args.img_size[1]), 
-                   patch_size=args.agent_patch_size)
+    # Instantiate multiple agents at random positions
+    agent1 = Agent(start_pos=(random.randint(0, args.img_size[0]), random.randint(0, args.img_size[1])),
+                   map_size=(args.img_size[0],args.img_size[1]),
+                   patch_size=args.agent_patch_size,
+                   singleAgent=False,
+                   observed=observed_map,
+                   explored=explored_map)
+    
+    agent2 = Agent(start_pos=(random.randint(0, args.img_size[0]), random.randint(0, args.img_size[1])),
+                   map_size=(args.img_size[0],args.img_size[1]),
+                   patch_size=args.agent_patch_size,
+                   singleAgent=False,
+                   observed=observed_map,
+                   explored=explored_map)
+    
+    agent3 = Agent(start_pos=(random.randint(0, args.img_size[0]), random.randint(0, args.img_size[1])),
+                   map_size=(args.img_size[0],args.img_size[1]),
+                   patch_size=args.agent_patch_size,
+                   singleAgent=False,
+                   observed=observed_map,
+                   explored=explored_map)
 
     # Initialize imported modules
     pygame.init()
@@ -92,19 +109,24 @@ def main():
         text_surface = w_font.render("Observation", False, (0, 0, 0))
         screen.blit(text_surface, (w_width * (1.0/4.0), 0))
 
-        # Update agent's observation and perform random walk
+        # Update agents' observation and perform random walk
         agent1.measure(env_array)
+        agent2.measure(env_array)
+        agent3.measure(env_array)
 
-        observed_array = agent1.get_observation()
+        observed_array = agent3.get_observation()
         observed_surface = array_to_surface(observed_array, 5)
         screen.blit(observed_surface, (w_width * (1.0/4.0), 40))
+
         agent1.draw(screen, 5, w_width * (1.0/4.0))
+        agent2.draw(screen, 5, w_width * (1.0/4.0))
+        agent3.draw(screen, 5, w_width * (1.0/4.0))
 
         # 3rd column - Explored Region
         text_surface = w_font.render("Explored Region", False, (0, 0, 0))
         screen.blit(text_surface, (w_width * (2.0/4.0), 0))
 
-        explored_array = agent1.get_explored()
+        explored_array = agent3.get_explored()
         # Multiplication by 255 here is necessary. Else, the surface appears entirely black throughout the simulation.
         explored_surface = array_to_surface(explored_array, 5, multiply_255=True)
         screen.blit(explored_surface, (w_width * (2.0/4.0), 40))

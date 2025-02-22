@@ -3,16 +3,22 @@ import random
 import pygame
 
 class Agent:
-    def __init__(self, start_pos, map_size, patch_size):
+    def __init__(self, start_pos, map_size, patch_size, singleAgent = True, observed = None, explored = None):
         self.position = start_pos
         self.map_width = map_size[0]
         self.map_height = map_size[1]
         self.patch_size = patch_size
         # Size of agent in pixels
         self.agent_size = 10
+
         # Maps storing information of what the agent has seen and regions it have explored
-        self.observed = np.zeros((self.map_width, self.map_height))
-        self.explored = np.zeros((self.map_width, self.map_height))
+        if (singleAgent):
+            self.observed = np.zeros((self.map_width, self.map_height))
+            self.explored = np.zeros((self.map_width, self.map_height))
+        else:
+            self.observed = observed
+            self.explored = explored
+        
         self.dy, self.dx = 0, 1 # Default: Move to the right
 
     # Change moving direction with 30% probability
@@ -31,7 +37,7 @@ class Agent:
         pos_y = max(self.agent_size//2, min(self.map_height-1-self.agent_size//2, pos_y))
         self.position = (pos_x, pos_y)
 
-    # Make an observation, update 'observed' and 'explored' given the NumPy array of the environment
+    # Make an observation, update 'observed' and 'explored' given the NumPy array of the environment (env_array)
     # Then, perform random walk
     def measure(self, env_array):
         pos_x, pos_y = self.position

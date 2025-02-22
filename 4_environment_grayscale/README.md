@@ -5,7 +5,7 @@ This code loads the image of a grayscale ellipse as the environment for an agent
 ## Parameters
 ```
 --env_img           Path to image to be loaded as environment, default: images/default.png
---img_size          Size of image in pixels, default: 128x128
+--img_size          Size of image in pixels, default: 128x128 (width X height)
 --model_path        Path to load trained odel from, default: models/inpainting_autoencoder_grayscale.pth
 --agent_patch_size  Size of patch observable by agent, default: 9
 --steps             Simulation time in ticks, default: 1000
@@ -13,5 +13,5 @@ This code loads the image of a grayscale ellipse as the environment for an agent
 
 **Example**
 ```
-python main.py --env_img images/default.png --img_size 128 128 --model_path models/inpainting_autoencoder_grayscale.pth --agent_patch_size 9 --steps 1000
+python main.py --env_img environment/default.png --img_size 128 128 --model_path models/denoising_autoencoder_grayscale.pth --agent_patch_size 9 --steps 10000
 ```
