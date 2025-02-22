@@ -17,6 +17,7 @@ Sucessful implementation of single-agent exploration scenario for grayscale elli
 - [X] Multi-agent exploration scenario
 - [ ] Dataset: Export individual frames from .seq files (provided by Zak) as JPG/PNG
 - [ ] Revise model architecture to perform inpainting on RGB images - [**GANs**](https://medium.com/towards-data-science/inpainting-with-ai-get-back-your-images-pytorch-a68f689128e5)
+- [ ] Implementation of RGB environment
 - [ ] Masking the training dataset with different types of noise
     - [X] Random noise
     - [X] 'Square' noise
