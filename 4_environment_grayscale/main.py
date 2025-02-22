@@ -6,7 +6,7 @@ from PIL import Image
 
 import torch
 
-from autoencoder import ConvAutoencoder
+from autoencoder import PartialConvAutoencoder
 from agent import Agent
 
 def array_to_surface(nparray, scale, multiply_255=False):
@@ -27,7 +27,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--env_img", type=str, default="environment/default.png")
     parser.add_argument("--img_size", type=int, nargs=2, default=[128, 128])
-    parser.add_argument("--model_path", type=str, default="models/inpainting_autoencoder_grayscale.pth")
+    parser.add_argument("--model_path", type=str, default="models/denoising_autoencoder_grayscale.pth")
     parser.add_argument("--no_of_agents", type=int, default=1)
     parser.add_argument("--agent_patch_size", type=int, default=9)
     parser.add_argument("--steps", type=int, default=1000)
@@ -36,7 +36,7 @@ def main():
     # Load model
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: '{device}'")
-    model = ConvAutoencoder().to(device)
+    model = PartialConvAutoencoder().to(device)
     model.load_state_dict(torch.load(args.model_path, weights_only=True, map_location=device))
     model.eval()
     print(f"Loaded model from '{args.model_path}'")
@@ -130,8 +130,12 @@ def main():
         # Model expects (1, 1, H, W)
         observed_tensor = observed_tensor.unsqueeze(0).unsqueeze(0).to(device)
 
+        # Mask array and tensor 
+        mask_array = explored_array.astype(np.float32)
+        mask_tensor = torch.from_numpy(mask_array).unsqueeze(0).unsqueeze(0).to(device)
+
         with torch.no_grad():
-            predicted_tensor = model(observed_tensor)
+            predicted_tensor = model(observed_tensor, mask_tensor)
 
         # Move to CPU, convert to (H, W) NumPy array
         predicted_array = predicted_tensor.cpu().numpy().squeeze()
