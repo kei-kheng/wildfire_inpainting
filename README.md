@@ -14,12 +14,13 @@ Sucessful implementation of single-agent exploration scenario for grayscale elli
     - [X] U-Net
     - [X] Partial convolution: https://arxiv.org/abs/1804.07723, https://github.com/NVIDIA/partialconv
 - [X] Decoupled encoder and decoder
-- [ ] Multi-agent exploration scenario, e.g., additional arguments in Agent's constructor: `shared_observed, shared_explored`
+- [X] Multi-agent exploration scenario
 - [ ] Dataset: Export individual frames from .seq files (provided by Zak) as JPG/PNG
 - [ ] Revise model architecture to perform inpainting on RGB images - [**GANs**](https://medium.com/towards-data-science/inpainting-with-ai-get-back-your-images-pytorch-a68f689128e5)
 - [ ] Masking the training dataset with different types of noise
-    - [ ] Random noise
-    - [ ] 'Square' noise
+    - [X] Random noise
+    - [X] 'Square' noise
+    - [X] 'Agents: Explored region' noise
     - [ ] Other types of noise
 - [ ] Improvement of random walk policy
 
