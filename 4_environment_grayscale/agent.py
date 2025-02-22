@@ -3,7 +3,7 @@ import random
 import pygame
 
 class Agent:
-    def __init__(self, start_pos, map_size, patch_size, singleAgent = True, observed = None, explored = None):
+    def __init__(self, start_pos, map_size, patch_size, observed, explored):
         self.position = start_pos
         self.map_width = map_size[0]
         self.map_height = map_size[1]
@@ -11,13 +11,9 @@ class Agent:
         # Size of agent in pixels
         self.agent_size = 10
 
-        # Maps storing information of what the agent has seen and regions it have explored
-        if (singleAgent):
-            self.observed = np.zeros((self.map_width, self.map_height))
-            self.explored = np.zeros((self.map_width, self.map_height))
-        else:
-            self.observed = observed
-            self.explored = explored
+        # Maps storing information of what the agent(s) has seen and regions it have explored
+        self.observed = observed
+        self.explored = explored
         
         self.dy, self.dx = 0, 1 # Default: Move to the right
 

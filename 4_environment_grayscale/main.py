@@ -28,6 +28,7 @@ def main():
     parser.add_argument("--env_img", type=str, default="environment/default.png")
     parser.add_argument("--img_size", type=int, nargs=2, default=[128, 128])
     parser.add_argument("--model_path", type=str, default="models/inpainting_autoencoder_grayscale.pth")
+    parser.add_argument("--no_of_agents", type=int, default=1)
     parser.add_argument("--agent_patch_size", type=int, default=9)
     parser.add_argument("--steps", type=int, default=1000)
     args = parser.parse_args()
@@ -40,31 +41,20 @@ def main():
     model.eval()
     print(f"Loaded model from '{args.model_path}'")
 
-    # Initialize 'observed' and 'explored' maps of multi-agent system
+    # Initialize 'observed' and 'explored' map of single-agent/multi-agent system
     observed_map = np.zeros((args.img_size[0], args.img_size[1]), dtype=np.float32)
     explored_map = np.zeros((args.img_size[0], args.img_size[1]), dtype=np.float32)
 
-    # Instantiate multiple agents at random positions
-    agent1 = Agent(start_pos=(random.randint(0, args.img_size[0]), random.randint(0, args.img_size[1])),
-                   map_size=(args.img_size[0],args.img_size[1]),
-                   patch_size=args.agent_patch_size,
-                   singleAgent=False,
-                   observed=observed_map,
-                   explored=explored_map)
-    
-    agent2 = Agent(start_pos=(random.randint(0, args.img_size[0]), random.randint(0, args.img_size[1])),
-                   map_size=(args.img_size[0],args.img_size[1]),
-                   patch_size=args.agent_patch_size,
-                   singleAgent=False,
-                   observed=observed_map,
-                   explored=explored_map)
-    
-    agent3 = Agent(start_pos=(random.randint(0, args.img_size[0]), random.randint(0, args.img_size[1])),
-                   map_size=(args.img_size[0],args.img_size[1]),
-                   patch_size=args.agent_patch_size,
-                   singleAgent=False,
-                   observed=observed_map,
-                   explored=explored_map)
+    # Instantiate agent(s) at random positions
+    agents = {}
+    for i in range(1, args.no_of_agents + 1):
+        agents[f"agent_{i}"] = Agent(
+            start_pos=(random.randint(0, args.img_size[0]), random.randint(0, args.img_size[1])),
+            map_size=(args.img_size[0],args.img_size[1]),
+            patch_size=args.agent_patch_size,
+            observed=observed_map,
+            explored=explored_map
+            )
 
     # Initialize imported modules
     pygame.init()
@@ -110,23 +100,21 @@ def main():
         screen.blit(text_surface, (w_width * (1.0/4.0), 0))
 
         # Update agents' observation and perform random walk
-        agent1.measure(env_array)
-        agent2.measure(env_array)
-        agent3.measure(env_array)
+        for i in range(1, args.no_of_agents + 1):
+            agents[f"agent_{i}"].measure(env_array)
 
-        observed_array = agent3.get_observation()
+        observed_array = agents[f"agent_{args.no_of_agents}"].get_observation()
         observed_surface = array_to_surface(observed_array, 5)
         screen.blit(observed_surface, (w_width * (1.0/4.0), 40))
 
-        agent1.draw(screen, 5, w_width * (1.0/4.0))
-        agent2.draw(screen, 5, w_width * (1.0/4.0))
-        agent3.draw(screen, 5, w_width * (1.0/4.0))
+        for i in range(1, args.no_of_agents + 1):
+            agents[f"agent_{i}"].draw(screen, 5, w_width * (1.0/4.0))
 
         # 3rd column - Explored Region
         text_surface = w_font.render("Explored Region", False, (0, 0, 0))
         screen.blit(text_surface, (w_width * (2.0/4.0), 0))
 
-        explored_array = agent3.get_explored()
+        explored_array = agents[f"agent_{args.no_of_agents}"].get_explored()
         # Multiplication by 255 here is necessary. Else, the surface appears entirely black throughout the simulation.
         explored_surface = array_to_surface(explored_array, 5, multiply_255=True)
         screen.blit(explored_surface, (w_width * (2.0/4.0), 40))
