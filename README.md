@@ -14,7 +14,7 @@ Sucessful implementation of single-agent exploration scenario for grayscale elli
 - [X] Multi-agent exploration scenario
 - [X] Dataset: Export individual frames from .seq files (provided by Zak) as JPG/PNG
 - [X] Revise model architecture to perform inpainting on RGB images - **GANs**
----------------------------------------------[2 weeks]---------------------------------------------
+---------------------------------------------------------------------------------------------------
 - [ ] Validation:
     - [ ] Bigger, shuffled dataset
     - [ ] Split dataset: training & testing
