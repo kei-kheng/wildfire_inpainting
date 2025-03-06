@@ -34,7 +34,7 @@ class IR_Images(Dataset):
 
 
 # Resize image, retain aspect ratio with specified longest side
-# Ensures final height and width are both divisible by 2^n, where n = upsampling/downsampling steps
+# Ensures final height and width are both divisible by 2^n, where n = upsampling/downsampling steps => Modify multiple if n changes
 class ImageResize:
     def __init__(self, scaled_dim, multiple=16):
         self.scaled_dim = scaled_dim
@@ -104,7 +104,7 @@ def apply_mask(batch, coverage):
 
 
 """
-latent_dim
+latent_dim => Unused for now
 - Number of dimensions in the latent space
 - Input for generator to generate new data
 - Higher value allows for more complex data to be generated
@@ -227,7 +227,7 @@ def main():
 
     transform = T.Compose(
         [
-            ImageResize(max_dim=args.img_scaled_dim),
+            ImageResize(scaled_dim=args.img_scaled_dim),
             T.ToTensor(),
             # Scale output to [-1, 1]
             # Reference: https://pytorch.org/vision/main/generated/torchvision.transforms.Normalize.html
