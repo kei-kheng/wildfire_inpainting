@@ -1,7 +1,7 @@
+# Libraries
 import os
 import glob
 import argparse
-import random
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -10,14 +10,14 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchvision.transforms as T
+
+# Contains various utilities, mostly for visualization
 import torchvision.utils as vutils
 from torch.utils.data import DataLoader, Dataset
 
 
-# -------------------------------------------------------
-# 1) Dataset for 128x128 GRAYSCALE ellipse images
-# -------------------------------------------------------
-class EllipseDataset(Dataset):
+# Dataset
+class IR_Images(Dataset):
     def __init__(self, data_dir, transform=None):
         self.files = sorted(glob.glob(os.path.join(data_dir, "*.png")))
         self.transform = transform
@@ -27,325 +27,332 @@ class EllipseDataset(Dataset):
 
     def __getitem__(self, idx):
         img_path = self.files[idx]
-        img = Image.open(img_path).convert("L")  # Grayscale
+        img = Image.open(img_path).convert("RGB")
         if self.transform:
             img = self.transform(img)
         return img
 
 
-# -------------------------------------------------------
-# 2) Random Square Mask Generation
-# -------------------------------------------------------
-def create_random_mask(height=128, width=128, coverage=0.3):
-    """
-    Generates a (1, H, W) mask: 1=valid pixel, 0=missing pixel.
-    The missing region is a random square occupying ~'coverage' fraction.
-    """
-    mask = np.ones((1, height, width), dtype=np.float32)
-    mask_area = int(coverage * height * width)
+# Resize image, retain aspect ratio with specified longest side
+# Ensures final height and width are both divisible by 2^n, where n = upsampling/downsampling steps
+class ImageResize:
+    def __init__(self, scaled_dim, multiple=16):
+        self.scaled_dim = scaled_dim
+        self.multiple = multiple
+
+    def __call__(self, img):
+        w, h = img.size
+        new_w = 0
+        new_h = 0
+
+        if w >= h:
+            new_w = self.scaled_dim
+            new_h = int(h * (self.scaled_dim / float(w)))
+        else:
+            new_h = self.scaled_dim
+            new_w = int(w * (self.scaled_dim / float(h)))
+        
+        snapped_w = max(self.multiple, (new_w // self.multiple) * self.multiple)
+        snapped_h = max(self.multiple, (new_h // self.multiple) * self.multiple)
+
+        return T.Resize((snapped_h, snapped_w))(img)  # Apply transform to image
+
+
+# Generate a square mask that is placed randomly on image
+def create_random_square_mask(channels, height, width, coverage):
+    mask_1ch = np.ones((height, width), dtype=np.float32)  # Single-channel mask
+
+    # Calculate side of square
+    total_pixels = height * width
+    mask_area = int(coverage * total_pixels)
     side_length = max(int(np.sqrt(mask_area)), 1)
     half_side = side_length // 2
+
+    # Randomly pick a square location
     center_x = np.random.randint(half_side, height - half_side)
     center_y = np.random.randint(half_side, width - half_side)
     start_x = center_x - half_side
     end_x = start_x + side_length
     start_y = center_y - half_side
     end_y = start_y + side_length
-    mask[0, start_x:end_x, start_y:end_y] = 0.0
+
+    # Zero out that square area
+    mask_1ch[start_x:end_x, start_y:end_y] = 0.0
+
+    # Replicate for the specified number of channels
+    mask = np.repeat(mask_1ch[np.newaxis, :, :], channels, axis=0)
+
     return mask
 
 
-def apply_random_mask(images, coverage=0.3):
-    """
-    images: (B,1,128,128) in [-1,1]
-    Returns:
-        masked_imgs: replaced missing region with -1
-        masks: binary 1/0 mask
-    """
-    B, _, H, W = images.shape
+# Mask application
+def apply_mask(batch, coverage):
+    B, _, H, W = batch.shape
     masked_list = []
     mask_list = []
-    device = images.device
 
     for i in range(B):
-        single_mask = create_random_mask(H, W, coverage)
-        single_mask_tensor = torch.from_numpy(single_mask).to(device)
-
-        # Where mask=0, set image to -1.0
-        masked_img = images[i] * single_mask_tensor + (1 - single_mask_tensor) * (-1.0)
+        mask = create_random_square_mask(3, H, W, coverage)
+        mask_tensor = torch.from_numpy(mask).to(batch.device)
+        masked_img = batch[i] * mask_tensor
         masked_list.append(masked_img.unsqueeze(0))
-        mask_list.append(single_mask_tensor.unsqueeze(0))
+        mask_list.append(mask_tensor.unsqueeze(0))
 
-    masked_imgs = torch.cat(masked_list, dim=0)
-    masks = torch.cat(mask_list, dim=0)
-    return masked_imgs, masks
+    masked = torch.cat(masked_list, dim=0)  # (B,3,H,W)
+    masks = torch.cat(mask_list, dim=0)  # (B,3,H,W)
+    return masked, masks
 
 
-# -------------------------------------------------------
-# 3) DCGAN-Style Generator (Grayscale)
-# -------------------------------------------------------
-class Generator(nn.Module):
-    """
-    Input: (B,1,128,128) with masked region at -1
-    Output: (B,1,128,128) in [-1,1]
-    """
+"""
+latent_dim
+- Number of dimensions in the latent space
+- Input for generator to generate new data
+- Higher value allows for more complex data to be generated
 
-    def __init__(self):
-        super(Generator, self).__init__()
-        # Downsample 4 times: 128->64->32->16->8
-        self.enc1 = nn.Sequential(
-            nn.Conv2d(1, 64, 4, 2, 1),  # 128->64
+LeakyReLU (for downsampling) vs ReLU (for upsampling):
+- ReLU outputs 0 for any negative input, Leaky ReLU outputs a small, non-zero value (avoids dead ReLUs) for negative inputs
+"""
+
+
+# Generator
+class ContextEncoder(nn.Module):
+    def __init__(self, in_channels=3, latent_dim=512):
+        super().__init__()
+
+        # Encoder
+        self.enc = nn.Sequential(
+            # Downsample using strided convolutions instead of pooling layers
+            nn.Conv2d(in_channels, 64, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(64),
             nn.LeakyReLU(0.2, inplace=True),
-        )
-        self.enc2 = nn.Sequential(
-            nn.Conv2d(64, 128, 4, 2, 1),  # 64->32
+            nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm2d(128),
             nn.LeakyReLU(0.2, inplace=True),
-        )
-        self.enc3 = nn.Sequential(
-            nn.Conv2d(128, 256, 4, 2, 1),  # 32->16
+            nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm2d(256),
             nn.LeakyReLU(0.2, inplace=True),
-        )
-        self.enc4 = nn.Sequential(
-            nn.Conv2d(256, 512, 4, 2, 1),  # 16->8
+            nn.Conv2d(256, 512, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm2d(512),
             nn.LeakyReLU(0.2, inplace=True),
         )
-        # Bottleneck: (B,512,8,8)
 
-        # Upsample 4 times: 8->16->32->64->128
-        self.dec1 = nn.Sequential(
-            nn.ConvTranspose2d(512, 256, 4, 2, 1),  # 8->16
+        # Bottleneck
+        self.bottleneck = nn.Sequential(
+            nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+        )
+
+        # Decoder
+        self.dec = nn.Sequential(
+            # Upsample
+            nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm2d(256),
             nn.ReLU(inplace=True),
-        )
-        self.dec2 = nn.Sequential(
-            nn.ConvTranspose2d(256, 128, 4, 2, 1),  # 16->32
+            nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm2d(128),
             nn.ReLU(inplace=True),
-        )
-        self.dec3 = nn.Sequential(
-            nn.ConvTranspose2d(128, 64, 4, 2, 1),  # 32->64
+            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
-        )
-        self.dec4 = nn.Sequential(
-            nn.ConvTranspose2d(64, 1, 4, 2, 1), nn.Tanh()  # 64->128
+            # Output 3 channels
+            nn.ConvTranspose2d(64, in_channels, kernel_size=4, stride=2, padding=1),
+            nn.Tanh(),  # Scale images to the range [-1, 1]
         )
 
     def forward(self, x):
-        # Encoder
-        x1 = self.enc1(x)
-        x2 = self.enc2(x1)
-        x3 = self.enc3(x2)
-        x4 = self.enc4(x3)
-        # Decoder
-        y1 = self.dec1(x4)
-        y2 = self.dec2(y1)
-        y3 = self.dec3(y2)
-        y4 = self.dec4(y3)
-        return y4
+        e = self.enc(x)
+        b = self.bottleneck(e)
+        out = self.dec(b)
+        return out
 
 
-# -------------------------------------------------------
-# 4) DCGAN-Style Discriminator (Grayscale)
-# -------------------------------------------------------
-class Discriminator(nn.Module):
-    """
-    Input: (B,1,128,128), Output: scalar for each sample
-    """
+"""
+Patch Discriminator
+- See pix2pix paper
+- Enforces realism at the scale of local patches (vs global discriminator)
+- Does not output a single scalar but a spatial map
+"""
 
-    def __init__(self):
-        super(Discriminator, self).__init__()
-        # 128->64->32->16->8->4-> maybe 1
+
+class PatchDiscriminator(nn.Module):
+    def __init__(self, in_channels=3):
+        super().__init__()
         self.main = nn.Sequential(
-            nn.Conv2d(1, 64, 4, 2, 1),  # 128->64
+            nn.Conv2d(in_channels, 64, kernel_size=4, stride=2, padding=1),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(64, 128, 4, 2, 1),  # 64->32
+            nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm2d(128),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(128, 256, 4, 2, 1),  # 32->16
+            nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm2d(256),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(256, 512, 4, 2, 1),  # 16->8
-            nn.BatchNorm2d(512),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(512, 1, 4, 2, 1),  # 8->4
-            nn.Sigmoid(),
+            # Output shape: (B,1,H/8,W/8)
+            nn.Conv2d(256, 1, kernel_size=4, stride=1, padding=1),
         )
 
     def forward(self, x):
-        out = self.main(x)  # shape: (B,1,4,4)
-        # Flatten to (B,16)
-        out = out.view(out.size(0), -1)
-        # Option 1: take the mean across the 16 values -> shape (B,)
-        validity = out.mean(dim=1)
-        return validity
+        return self.main(x)
 
 
-# -------------------------------------------------------
-# 5) Weight Initialization
-# -------------------------------------------------------
-def weights_init(m):
-    classname = m.__class__.__name__
-    if "Conv" in classname:
-        nn.init.normal_(m.weight.data, 0.0, 0.02)
+# Weight initialization according to layer
+# Reference: DCGAN Radford et al., 2015, + Ioffe & Szegedy
+def weights_init(layer):
+    classname = layer.__class__.__name__
+    if "Conv" in classname or "ConvTranspose" in classname:  # Mean = 0, Std = 0.02
+        nn.init.normal_(layer.weight.data, 0.0, 0.02)
     elif "BatchNorm" in classname:
-        nn.init.normal_(m.weight.data, 1.0, 0.02)
-        nn.init.constant_(m.bias.data, 0)
+        nn.init.normal_(layer.weight.data, 1.0, 0.02)
+        nn.init.constant_(layer.bias.data, 0)
 
 
-# -------------------------------------------------------
-# 6) Training Script
-# -------------------------------------------------------
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_dir", type=str, default="dataset/625_images")
-    parser.add_argument("--epochs", type=int, default=50)
+    parser.add_argument("--data_dir", type=str, default="dataset")
+    parser.add_argument("--img_scaled_dim", type=int, default=160)  # 1704 x 1280
+    parser.add_argument("--coverage", type=float, default=0.15)
+    parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--lambda_recon", type=int, default=10)
+    # Default values based on best practice - learning rate, beta
     parser.add_argument("--lr", type=float, default=0.0002)
     parser.add_argument("--beta1", type=float, default=0.5)
-    parser.add_argument(
-        "--coverage",
-        type=float,
-        default=0.15,
-        help="fraction of pixels to mask out in random square",
-    )
-    parser.add_argument(
-        "--model_out", type=str, default="models/inpainting_gan_gray.pth"
-    )
+    parser.add_argument("--output_dir", type=str, default="default_folder")
+    parser.add_argument("--num_show", type=int, default=5)
     args = parser.parse_args()
 
-    os.makedirs("result/train/real", exist_ok=True)
-    os.makedirs("result/train/masked", exist_ok=True)
-    os.makedirs("result/train/recon", exist_ok=True)
-    os.makedirs("models", exist_ok=True)
+    os.makedirs(f"results/{args.output_dir}/real", exist_ok=True)
+    os.makedirs(f"results/{args.output_dir}/masked", exist_ok=True)
+    os.makedirs(f"results/{args.output_dir}/recon", exist_ok=True)
+    os.makedirs(f"models/{args.output_dir}", exist_ok=True)
 
-    # Data transform: grayscale in [-1,1]
     transform = T.Compose(
-        [T.Resize((128, 128)), T.ToTensor(), T.Normalize((0.5,), (0.5,))]
+        [
+            ImageResize(max_dim=args.img_scaled_dim),
+            T.ToTensor(),
+            # Scale output to [-1, 1]
+            # Reference: https://pytorch.org/vision/main/generated/torchvision.transforms.Normalize.html
+            # Reference: https://discuss.pytorch.org/t/understanding-transform-normalize/21730/21?page=2
+            T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        ]
     )
-    dataset = EllipseDataset(args.data_dir, transform=transform)
-    dataloader = DataLoader(
-        dataset, batch_size=args.batch_size, shuffle=True, num_workers=2
-    )
+
+    dataset = IR_Images(args.data_dir, transform=transform)
+    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
+    print("Dataset length:", len(dataset))
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"Using device: {device}")
+    print("Using device:", device)
 
-    # Initialize models
-    netG = Generator().to(device)
-    netG.apply(weights_init)
+    generator = ContextEncoder(in_channels=3).to(device)
+    # Custom initialization of neural network layer weights
+    generator.apply(weights_init)
 
-    netD = Discriminator().to(device)
-    netD.apply(weights_init)
+    discriminator = PatchDiscriminator(in_channels=3).to(device)
+    discriminator.apply(weights_init)
 
-    # Losses
-    criterion_bce = nn.BCELoss().to(device)
-    criterion_l2 = nn.MSELoss().to(device)
+    # Criteria/Losses
+    # For PatchDiscriminator. The logarithms are handled inside this loss function -> No explicit log calls in the code.
+    criterion_bce = nn.BCEWithLogitsLoss().to(device)
+    # For reconstruction, https://outcomeschool.com/blog/l1-and-l2-loss-functions
+    criterion_l1 = nn.L1Loss().to(device)
 
-    optimizerD = optim.Adam(netD.parameters(), lr=args.lr, betas=(args.beta1, 0.999))
-    optimizerG = optim.Adam(netG.parameters(), lr=args.lr, betas=(args.beta1, 0.999))
+    optimizerG = optim.Adam(
+        generator.parameters(), lr=args.lr, betas=(args.beta1, 0.999)
+    )
+    optimizerD = optim.Adam(
+        discriminator.parameters(), lr=args.lr, betas=(args.beta1, 0.999)
+    )
 
-    real_label = 1.0
-    fake_label = 0.0
+    # Labelling
+    realLabel = 1.0
+    fakeLabel = 0.0
 
     for epoch in range(args.epochs):
         for i, real_imgs in enumerate(dataloader):
-            real_imgs = real_imgs.to(device)  # shape: (B,1,128,128)
-            batch_size = real_imgs.size(0)
+            real_imgs = real_imgs.to(device)
+            masked_imgs, masks = apply_mask(real_imgs, coverage=args.coverage)
 
-            # Step 1: Create masked input and mask
-            masked_imgs, masks = apply_random_mask(real_imgs, coverage=args.coverage)
-            # masked_imgs: in [-1,1], missing region is set to -1
-            # masks: 1=valid, 0=missing
+            # ------ Train discriminator ------
+            """
+            Previously, zero_grad() was called on the Adam optimizer. In most cases, calling it on the model has the 
+            same effect (in most simple use cases) as calling it on the optimizer, with some subtle differences:
+            - optimizer.zero_grad() only zeroes out the gradients of the parameters that that optimizer is responsible for.
+            - model.zero_grad() loops through every parameter in the model and zeros the .grad field.
+            """
+            discriminator.zero_grad()
 
-            # Step 2: Train Discriminator
-            netD.zero_grad()
+            # Shape is (B,1,H/8,W/8) spatial map
+            d_out_real = discriminator(real_imgs)
+            # Create a tensor of 1s (real_label), same size as d_out_real
+            real_label = torch.full_like(d_out_real, realLabel, device=device)
+            # criterion_bce applies signmoid to d_out_real before taking logarithm
+            lossD_real = criterion_bce(d_out_real, real_label)
 
-            # (a) Real
-            label = torch.full(
-                (batch_size,), real_label, dtype=torch.float, device=device
-            )
-            output_real = netD(real_imgs)  # shape (B,)
-            errD_real = criterion_bce(output_real, label)
-            errD_real.backward()
-            D_x = output_real.mean().item()
+            # Generator's output is in the [-1, 1] range due to tanh()
+            g_out = generator(masked_imgs)
+            # Composite: Retain original pixels in the known pixels (real_img * masks), add generated pixels in the unknown region (g_out * (1 - masks))
+            comp = real_imgs * masks + g_out * (1 - masks)
+            # See if discriminator could detect that the images are fake (generated)
+            # detach() to prevent upating generator's parameters -> See logbook to see usage of detach()
+            d_out_fake = discriminator(comp.detach())
+            fake_gt = torch.full_like(d_out_fake, fakeLabel, device=device)
+            lossD_fake = criterion_bce(d_out_fake, fake_gt)
 
-            # (b) Fake
-            fake_full = netG(masked_imgs)
-            # composite: real where mask=1, fake where mask=0
-            composite = real_imgs * masks + fake_full * (1 - masks)
-            label.fill_(fake_label)
-            output_fake = netD(composite.detach())
-            errD_fake = criterion_bce(output_fake, label)
-            errD_fake.backward()
-            D_G_z1 = output_fake.mean().item()
-
-            errD = errD_real + errD_fake
+            lossD = lossD_real + lossD_fake
+            lossD.backward()
             optimizerD.step()
 
-            # Step 3: Train Generator
-            netG.zero_grad()
-            # (a) Adversarial Loss
-            label.fill_(real_label)  # generator wants to fool D
-            output_fake_forG = netD(composite)
-            errG_adv = criterion_bce(output_fake_forG, label)
+            # ------ Train generator ------
+            generator.zero_grad()
 
-            # (b) L2 reconstruction loss on masked region only
-            recon_loss = criterion_l2(fake_full * (1 - masks), real_imgs * (1 - masks))
-            lambda_l2 = 0.3
-            errG = (1 - lambda_l2) * errG_adv + lambda_l2 * recon_loss
-            errG.backward()
-            D_G_z2 = output_fake_forG.mean().item()
+            # Adversarial loss: Want discriminator(comp) => real
+            d_out_fakeForG = discriminator(comp)
+            adv_gt = torch.full_like(d_out_fakeForG, realLabel, device=device)
+            # How far away from 'real' are the generated images?
+            lossG_adv = criterion_bce(d_out_fakeForG, adv_gt)
+
+            # Calculate reconstruction loss in the missing (unknown) regions only
+            lossG_recon = criterion_l1(g_out * (1 - masks), real_imgs * (1 - masks))
+
+            """
+            Generator loss
+            - Combines adversarial loss and more 'objective' reconstruction loss
+            - Larger weight for latter (lambda_recon), want model to preserve known data
+            - References: Isola et al., 2017 + Pathak et al., 2016 + pix2pix
+            """
+            lossG = lossG_adv + args.lambda_recon * lossG_recon
+            lossG.backward()
             optimizerG.step()
 
-            # Step 4: Print / Save images
-            if i % 50 == 0:
+            # For each batch
+            if i % 2 == 0:
                 print(
-                    f"[{epoch}/{args.epochs}][{i}/{len(dataloader)}] "
-                    f"Loss_D: {errD.item():.4f} Loss_G: {errG.item():.4f} "
-                    f"D(x): {D_x:.4f} D(G(z)): {D_G_z1:.4f}/{D_G_z2:.4f}"
+                    f"Epoch [{epoch+1}/{args.epochs}] Step [{i}/{len(dataloader)}] "  # step: i-th batch out of all batches in one epoch
+                    f"LossD: {lossD.item():.4f}, LossG: {lossG.item():.4f}"
                 )
 
-                # Save sample images
-                vutils.save_image(
-                    real_imgs.detach(),
-                    f"result/train/real/real_epoch_{epoch:03d}.png",
-                    normalize=True,
-                )
-                vutils.save_image(
-                    masked_imgs.detach(),
-                    f"result/train/masked/masked_epoch_{epoch:03d}.png",
-                    normalize=True,
-                )
-                vutils.save_image(
-                    composite.detach(),
-                    f"result/train/recon/recon_epoch_{epoch:03d}.png",
-                    normalize=True,
-                )
+        # Visualize and save results from current epoch (last batch)
+        with torch.no_grad():
+            sample_real = real_imgs[: args.num_show].cpu()
+            sample_masked = masked_imgs[: args.num_show].cpu()
+            sample_comp = comp[: args.num_show].cpu()
 
-        print(f"Epoch [{epoch+1}/{args.epochs}] completed.")
+        # A more convenient way of visualization compared to matplotlib
+        vutils.save_image(
+            sample_real, f"results/{args.output_dir}/real/epoch_{epoch}.png", normalize=True
+        )
+        vutils.save_image(
+            sample_masked, f"results/{args.output_dir}/masked/epoch_{epoch}.png", normalize=True
+        )
+        vutils.save_image(
+            sample_comp, f"results/{args.output_dir}/recon/epoch_{epoch}.png", normalize=True
+        )
 
-    # Save generator
-    os.makedirs(os.path.dirname(args.model_out), exist_ok=True)
-    torch.save(netG.state_dict(), args.model_out)
-    print(f"Model saved to '{args.model_out}'")
-
-    # Optional: visualize a final example
-    sample = next(iter(dataloader))
-    sample = sample.to(device)
-    masked_ex, mask_ex = apply_random_mask(sample, coverage=args.coverage)
-    with torch.no_grad():
-        fake_ex = netG(masked_ex)
-    composite_ex = sample * mask_ex + fake_ex * (1 - mask_ex)
-    recon_np = 0.5 * (composite_ex.cpu().numpy().squeeze() + 1.0)  # [-1,1] -> [0,1]
-
-    plt.imshow(recon_np[0], cmap="gray")
-    plt.title("Example reconstructed image")
-    plt.axis("off")
-    plt.show()
+    # Save models - discriminator is usally not needed once training is complete
+    torch.save(generator.state_dict(), f"models/{args.output_dir}/generator.pth")
+    print(f"Saved Context Encoder to: models/{args.output_dir}/generator.pth")
+    torch.save(discriminator.state_dict(), f"models/{args.output_dir}/discriminator.pth")
+    print(f"Saved Patch Discriminator to: models/{args.output_dir}/discriminator.pth")
 
 
 if __name__ == "__main__":
