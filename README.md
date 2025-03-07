@@ -1,5 +1,5 @@
 # Project Goal
-Implement a generative model to perform image inpainting on lossy images of wildfire scenes
+Implement a generative model to perform image inpainting on lossy images of wildfire scenes.
 
 Lossy image --> Denoising autoencoder --> Inpainting GAN --> Reconstructed, denoised image
 
@@ -11,18 +11,16 @@ Lossy image --> Denoising autoencoder --> Inpainting GAN --> Reconstructed, deno
 # Project Progress
 Sucessful implementation of single-agent exploration scenario for grayscale ellipses. However, it was realised that the current model architecture only performs denoising and not inpainting. The next steps are:
 - [X] Revised model architecture to perform inpainting on grayscale images - **unsatisfactory results**. Tried CAE, PCAE and U-Net.
-- [X] Multi-agent exploration scenario
-- [X] Dataset: Export individual frames from .seq files (provided by Zak) as JPG/PNG
-- [X] Revise model architecture to perform inpainting on RGB images - **GANs**
+- [X] Multi-agent exploration scenario.
+- [X] Dataset: Export individual frames from .seq files (provided by Zak) as JPG/PNG.
+- [X] Revise model architecture to perform inpainting on RGB images - **GANs**.
 ---------------------------------------------------------------------------------------------------
-- [ ] Validation:
-    - [ ] Bigger, shuffled dataset
-    - [ ] Split dataset: training & testing
-    - [ ] Write inference.py: Load trained model => Perform inferencing on data never seen before
-- [ ] Extract images of 'lines' (firefronts) from Zak's dataset => train model to inpaint lines
-- [ ] Implementation of RGB environment
+- [ ] Train GAN on a larger dataset (~500 at the moment) for better generalization. Save one set of data for inferencing (not used in training).
+- [ ] Extend main.py to write the epoch number and losses (2) to a CSV file (pandas).
+- [ ] Extend main.py to write the training conditions to a TXT file.
+- [ ] Implementation of RGB environment.
 ---------------------------------------------------------------------------------------------------
-- [ ] Masking the training dataset with different types of noise
+- [ ] Masking the training dataset with different types of noise:
     - [X] Random noise
     - [X] 'Square' noise
     - [X] 'Agents: Explored region' noise
