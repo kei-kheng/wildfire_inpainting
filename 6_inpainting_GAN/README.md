@@ -1,5 +1,10 @@
 # Description
-This code implements a Generative Adversarial Network (GAN) to perform inpainting on [overhead infrared (IR) images of a series of prescribed fires on an area of 10 x 10 m](https://www.fs.usda.gov/rds/archive/catalog/RDS-2022-0076). During each epoch, the results (ground truth, masked images and inpainted images) are saved to 'results'. The generator (context encoder) and discriminator (patch discriminator) are saved to 'models' when training is complete.
+This code implements a Generative Adversarial Network (GAN) to perform inpainting on [overhead infrared (IR) images of a series of prescribed fires on an area of 10 x 10 m](https://www.fs.usda.gov/rds/archive/catalog/RDS-2022-0076). The GAN has two sub-models, the context encoder (generator) and patch discriminator (discriminator).
+
+- `main.py` trains and saves the models. During each epoch, the results (ground truth, masked images and inpainted images) are saved to 'results'. **Does not employ train test split.**
+- `inference.py` loads a trained generator and performs inferencing, ideally on dataset it has never seen during its training phase.
+- `models.py` contains the definition of the sub-models.
+- `image_utils.py` contains functions needed to load, preprocess and perform masking on the dataset.
 
 # Usage - main.py
 ## Parameters
@@ -18,7 +23,5 @@ This code implements a Generative Adversarial Network (GAN) to perform inpaintin
 
 **Example**
 ```
-python main.py --data_dir dataset/1_synthetic_coloured_ellipses --img_scaled_dim 80 --coverage 0.15 --epochs 50 --batch_size 64 --lambda_recon 10 --lr 0.0002 --beta1 0.5 --output_dir 1_synthetic_coloured_ellipses --num_show 5
+python main.py --data_dir dataset/synthetic_coloured_ellipses --img_scaled_dim 80 --coverage 0.15 --epochs 50 --batch_size 64 --lambda_recon 10 --lr 0.0002 --beta1 0.5 --output_dir synthetic_coloured_ellipses --num_show 5
 ```
-
-# Results
