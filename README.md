@@ -26,5 +26,6 @@ Sucessful implementation of single-agent exploration scenario for grayscale elli
     - [X] 'Agents: Explored region' noise
     - [ ] Other types of noise
 - [ ] Improvement of random walk policy
+- [ ] Upload zipped folders of dataset to GitHub
 
 **Check logbook for saved links that might be useful!**
