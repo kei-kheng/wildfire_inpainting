@@ -2,6 +2,7 @@
 import os
 import argparse
 import csv
+import random
 
 import torch
 import torch.nn as nn
@@ -9,6 +10,7 @@ import torch.optim as optim
 import torchvision.transforms as T
 # Contains various utilities, mostly for visualization
 import torchvision.utils as vutils
+import torch.utils.data as data
 from torch.utils.data import DataLoader
 
 from models import ContextEncoder, PatchDiscriminator
@@ -27,6 +29,7 @@ def weights_init(layer):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_dir", type=str, default="dataset")
+    parser.add_argument("--max_dataset_size", type=int, default=1000)
     parser.add_argument("--img_scaled_dim", type=int, default=160)  # 1704 x 1280
     parser.add_argument("--coverage", type=float, default=0.15)
     parser.add_argument("--epochs", type=int, default=10)
@@ -59,10 +62,14 @@ def main():
         # Reference: https://discuss.pytorch.org/t/understanding-transform-normalize/21730/21?page=2
         T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
         ])
-
-    dataset = IR_Images(args.data_dir, transform=transform)
-    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)  # Data shuffling is important during training!
-    print("Dataset length:", len(dataset))
+    
+    dataset = IR_Images(args.data_dir, transform=transform)  # IR_Images loads dataset in a sorted order
+    indices = list(range(len(dataset)))  # Generate a list of indices to iterate through the dataset
+    random.shuffle(indices)
+    indices = indices[:min(args.max_dataset_size, len(dataset))]  # Apply dataset limit after shuffling
+    dataset = data.Subset(dataset, indices)  # https://pytorch.org/docs/stable/data.html
+    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)  # Shuffle batches during each epoch
+    print(f"Using {len(dataset)} shuffled samples from dataset")
 
     # Create/overwrite and save training conditions to a text file
     # vars() returns a dict, items() returns an iterable of (key, value) pairs
@@ -70,7 +77,6 @@ def main():
     with open(txt_path, "w") as f:
         for arg_key, arg_value in vars(args).items():
             f.write(f"--{arg_key} {arg_value}\n")
-        f.write(f"Dataset length: {len(dataset)}\n")
     print(f"Wrote training conditions to: {txt_path}")
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -185,13 +191,13 @@ def main():
 
         # A more convenient way of visualization compared to matplotlib
         vutils.save_image(
-            sample_real, f"results/{args.output_dir}/real/epoch_{epoch}.png", normalize=True
+            sample_real, f"results/{args.output_dir}/real/epoch_{epoch+1}.png", normalize=True
         )
         vutils.save_image(
-            sample_masked, f"results/{args.output_dir}/masked/epoch_{epoch}.png", normalize=True
+            sample_masked, f"results/{args.output_dir}/masked/epoch_{epoch+1}.png", normalize=True
         )
         vutils.save_image(
-            sample_comp, f"results/{args.output_dir}/recon/epoch_{epoch}.png", normalize=True
+            sample_comp, f"results/{args.output_dir}/recon/epoch_{epoch+1}.png", normalize=True
         )
 
     # Save models - discriminator is usally not needed once training is complete

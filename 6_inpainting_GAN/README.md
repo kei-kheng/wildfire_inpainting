@@ -9,16 +9,17 @@ This code implements a Generative Adversarial Network (GAN) to perform inpaintin
 # Usage - main.py
 ## Parameters
 ```
---data_dir         Directory containing images use to train the GAN
---img_scaled_dim   The dimension of the longest side of the image after scaling
---coverage         Fraction of image to be masked
---epochs           Number of epochs
---batch_size       The number of images in each mini-batch
---lambda_recon     Weight of reconstruction loss in generator's loss
---lr               Learning rate of Adam optimizer
---beta1            Beta1 (decay rate) of Adam optimizer
---output_dir       Name of folder to store the models and results
---num_show         Number of images to be displayed
+--data_dir          Directory containing images use to train the GAN
+--max_dataset_size  Specifies the maximum number of images used for training
+--img_scaled_dim    The dimension of the longest side of the image after scaling
+--coverage          Fraction of image to be masked
+--epochs            Number of epochs
+--batch_size        The number of images in each mini-batch
+--lambda_recon      Weight of reconstruction loss in generator's loss
+--lr                Learning rate of Adam optimizer
+--beta1             Beta1 (decay rate) of Adam optimizer
+--output_dir        Name of folder to store the models and results
+--num_show          Number of images to be displayed
 ```
 
 **Example**
