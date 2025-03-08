@@ -26,3 +26,20 @@ This code implements a Generative Adversarial Network (GAN) to perform inpaintin
 ```
 python main.py --data_dir dataset/synthetic_coloured_ellipses --img_scaled_dim 80 --coverage 0.15 --epochs 50 --batch_size 64 --lambda_recon 10 --lr 0.0002 --beta1 0.5 --output_dir synthetic_coloured_ellipses --num_show 5
 ```
+
+# Usage - inference.py
+## Parameters
+```
+--data_dir          Directory containing images to perform inference on
+--model_path        Directory to load trained generator from
+--img_scaled_dim    The dimension of the longest side of the image after scaling
+--coverage          Fraction of image to be masked
+--batch_size        The number of images in each mini-batch
+--output_dir        Name of folder to store inference results
+--num_show          Number of images to be displayed
+```
+
+**Example**
+```
+python inference.py --data_dir dataset/inference --model_path models/Burn06_IR/generator.pth --img_scaled_dim 80 --coverage 0.15 --batch_size 5 --output_dir inference_results --num_show 5
+```

@@ -15,9 +15,14 @@ Sucessful implementation of single-agent exploration scenario for grayscale elli
 - [X] Dataset: Export individual frames from .seq files (provided by Zak) as JPG/PNG.
 - [X] Revise model architecture to perform inpainting on RGB images - **GANs**.
 ---------------------------------------------------------------------------------------------------
-- [ ] Train GAN on a larger dataset (~500 at the moment) for better generalization. Save one set of data for inferencing (not used in training).
-- [ ] Extend main.py to write the epoch number and losses (2) to a CSV file (pandas).
-- [ ] Extend main.py to write the training conditions to a TXT file.
+- [ ] Improve GAN to generalize better. May try:
+    - [ ] Advanced masking techniques - irregular masks, multiple holes
+    - [ ] Partial convolution
+    - [ ] If lambda_recon is too large, mismatches are heavily penalized
+    - [ ] Two phase training: Pretrain just for reconstruction losses for a few epochs before introducing the adversarial loss
+    - [ ] Stop if reconstruction losses or adversarial scores stop improving to avoid overfitting
+- [X] Extend main.py to write the epoch number and losses (2) to a CSV file (pandas).
+- [X] Extend main.py to write the training conditions to a TXT file.
 - [ ] Implementation of RGB environment.
 ---------------------------------------------------------------------------------------------------
 - [ ] Masking the training dataset with different types of noise:
