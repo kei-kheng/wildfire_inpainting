@@ -44,20 +44,12 @@ def main():
     os.makedirs(f"results/{args.output_dir}/recon", exist_ok=True)
     os.makedirs(f"models/{args.output_dir}", exist_ok=True)
 
-    # Create/overwrite and save training conditions to a text file
-    # vars() returns a dict, items() returns an iterable of (key, value) pairs
-    txt_path = f"models/{args.output_dir}/training_conditions.txt"
-    with open(txt_path, "w") as f:
-        for arg_key, arg_value in vars(args).items():
-            f.write(f"--{arg_key} {arg_value}\n")
-    print(f"Wrote training conditions to: {txt_path}")
-
     # Create/overwrite CSV file
+    # 'newline' argument is needed to avoid extra blank lines/newline issues: https://docs.python.org/3/library/csv.html#csv.writer
     csv_path = f"results/{args.output_dir}/training_log.csv"
     with open(csv_path, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(["epoch", "lossD", "lossG", "lossG_recon"])
-
 
     transform = T.Compose([
         ImageResize(scaled_dim=args.img_scaled_dim),
@@ -71,6 +63,15 @@ def main():
     dataset = IR_Images(args.data_dir, transform=transform)
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)  # Data shuffling is important during training!
     print("Dataset length:", len(dataset))
+
+    # Create/overwrite and save training conditions to a text file
+    # vars() returns a dict, items() returns an iterable of (key, value) pairs
+    txt_path = f"models/{args.output_dir}/training_conditions.txt"
+    with open(txt_path, "w") as f:
+        for arg_key, arg_value in vars(args).items():
+            f.write(f"--{arg_key} {arg_value}\n")
+        f.write(f"Dataset length: {len(dataset)}\n")
+    print(f"Wrote training conditions to: {txt_path}")
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Using device:", device)

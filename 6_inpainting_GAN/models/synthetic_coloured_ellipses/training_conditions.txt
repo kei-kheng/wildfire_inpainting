@@ -8,3 +8,4 @@
 --beta1 0.5
 --output_dir synthetic_coloured_ellipses
 --num_show 5
+Dataset length: 1000
