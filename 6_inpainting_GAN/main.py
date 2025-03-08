@@ -1,6 +1,7 @@
 # Libraries
 import os
 import argparse
+import csv
 
 import torch
 import torch.nn as nn
@@ -43,19 +44,32 @@ def main():
     os.makedirs(f"results/{args.output_dir}/recon", exist_ok=True)
     os.makedirs(f"models/{args.output_dir}", exist_ok=True)
 
-    transform = T.Compose(
-        [
-            ImageResize(scaled_dim=args.img_scaled_dim),
-            T.ToTensor(),
-            # Scale output to [-1, 1]
-            # Reference: https://pytorch.org/vision/main/generated/torchvision.transforms.Normalize.html
-            # Reference: https://discuss.pytorch.org/t/understanding-transform-normalize/21730/21?page=2
-            T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-        ]
-    )
+    # Create/overwrite and save training conditions to a text file
+    # vars() returns a dict, items() returns an iterable of (key, value) pairs
+    txt_path = f"models/{args.output_dir}/training_conditions.txt"
+    with open(txt_path, "w") as f:
+        for arg_key, arg_value in vars(args).items():
+            f.write(f"--{arg_key} {arg_value}\n")
+    print(f"Wrote training conditions to: {txt_path}")
+
+    # Create/overwrite CSV file
+    csv_path = f"results/{args.output_dir}/training_log.csv"
+    with open(csv_path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["epoch", "lossD", "lossG", "lossG_recon"])
+
+
+    transform = T.Compose([
+        ImageResize(scaled_dim=args.img_scaled_dim),
+        T.ToTensor(),
+        # Scale output to [-1, 1]
+        # Reference: https://pytorch.org/vision/main/generated/torchvision.transforms.Normalize.html
+        # Reference: https://discuss.pytorch.org/t/understanding-transform-normalize/21730/21?page=2
+        T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        ])
 
     dataset = IR_Images(args.data_dir, transform=transform)
-    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)  # Data shuffling is important during training!
     print("Dataset length:", len(dataset))
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -82,7 +96,11 @@ def main():
     fakeLabel = 0.0
 
     for epoch in range(args.epochs):
-        for i, (real_imgs, _) in enumerate(dataloader):
+        for i, (real_imgs, _) in enumerate(dataloader):  # For each batch
+            running_lossD = 0.0
+            running_lossG = 0.0
+            running_lossG_recon = 0.0
+
             real_imgs = real_imgs.to(device)
             masked_imgs, masks = apply_mask(real_imgs, coverage=args.coverage)
 
@@ -138,12 +156,25 @@ def main():
             lossG.backward()
             optimizerG.step()
 
-            # For each batch
-            if i % 2 == 0:
-                print(
-                    f"Epoch [{epoch+1}/{args.epochs}] Step [{i}/{len(dataloader)}] "  # step: i-th batch out of all batches in one epoch
-                    f"LossD: {lossD.item():.4f}, LossG: {lossG.item():.4f}"
-                )
+            # PyTorch item() returns a scalar value from a single-element tensor - different from items()!
+            running_lossD += lossD.item()
+            running_lossG += lossG.item()
+            running_lossG_recon += lossG_recon.item()
+
+        # Calculate average loss = (running loss) / (number of batch per epoch) at the end of each epoch
+        avg_lossD = running_lossD / len(dataloader)
+        avg_lossG = running_lossG / len(dataloader)
+        avg_lossG_recon = running_lossG_recon / len(dataloader)
+
+        print(
+            f"Epoch [{epoch+1}/{args.epochs}] "
+            f"LossD: {avg_lossD:.4f}, LossG: {avg_lossG:.4f}, LossG_recon: {avg_lossG_recon:.4f}"
+        )
+
+        # Append epoch number and losses to created CSV
+        with open(csv_path, "a", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow([epoch + 1, f"{avg_lossD:.4f}", f"{avg_lossG:.4f}", f"{avg_lossG_recon:.4f}"])
 
         # Visualize and save results from last batch of every epoch
         with torch.no_grad():
@@ -167,7 +198,6 @@ def main():
     print(f"Saved Context Encoder to: models/{args.output_dir}/generator.pth")
     torch.save(discriminator.state_dict(), f"models/{args.output_dir}/discriminator.pth")
     print(f"Saved Patch Discriminator to: models/{args.output_dir}/discriminator.pth")
-
 
 if __name__ == "__main__":
     main()
