@@ -1,0 +1,11 @@
+--data_dir dataset\IR_images
+--max_dataset_size 1000
+--img_scaled_dim 160
+--coverage 0.15
+--epochs 30
+--batch_size 64
+--lambda_recon 100
+--lr 0.0002
+--beta1 0.5
+--output_dir IR_images
+--num_show 5
