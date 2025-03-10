@@ -1,5 +1,6 @@
 # Project Goal
-Implement a generative model to perform image inpainting on lossy images of wildfire scenes.
+- Implement a generative model to perform image inpainting on lossy images of wildfire scenes.
+- Investigate collective perception in multi-agent systems.
 
 Lossy image --> Denoising autoencoder --> Inpainting GAN --> Reconstructed, denoised image
 
@@ -8,29 +9,19 @@ Lossy image --> Denoising autoencoder --> Inpainting GAN --> Reconstructed, deno
 - [2D Shape Generator](https://github.com/TimoFlesch/2D-Shape-Generator)
 - [PartialConv2d](https://github.com/NVIDIA/partialconv)
 
-# Project Progress
-Sucessful implementation of single-agent exploration scenario for grayscale ellipses. However, it was realised that the current model architecture only performs denoising and not inpainting. The next steps are:
-- [X] Revised model architecture to perform inpainting on grayscale images - **unsatisfactory results**. Tried CAE, PCAE and U-Net.
-- [X] Multi-agent exploration scenario.
-- [X] Dataset: Export individual frames from .seq files (provided by Zak) as JPG/PNG.
-- [X] Revise model architecture to perform inpainting on RGB images - **GANs**.
----------------------------------------------------------------------------------------------------
-- [ ] Improve GAN to generalize better. May try:
-    - [ ] Advanced masking techniques - irregular masks, multiple holes
-    - [ ] Partial convolution
-    - [ ] If lambda_recon is too large, mismatches are heavily penalized
-    - [ ] Two phase training: Pretrain just for reconstruction losses for a few epochs before introducing the adversarial loss
-    - [ ] Stop if reconstruction losses or adversarial scores stop improving to avoid overfitting
-- [X] Extend main.py to write the epoch number and losses (2) to a CSV file (pandas).
-- [X] Extend main.py to write the training conditions to a TXT file.
-- [ ] Implementation of RGB environment.
----------------------------------------------------------------------------------------------------
-- [ ] Masking the training dataset with different types of noise:
-    - [X] Random noise
-    - [X] 'Square' noise
-    - [X] 'Agents: Explored region' noise
-    - [ ] Other types of noise
-- [ ] Improvement of random walk policy
+# To-do [Logbook - 10 March 2025]
+*Model & Dataset*
+- [ ] Improve model to generalize better: expand dataset, train for more epochs.
+- [ ] Data augmentation: rotation, random number of square masks with varying sizes.
+
+*Environment & Agent*
+- [ ] RGB environment
+- [ ] List down assumptions: agents' observation patch, information decay rate and **communication** range.
+
+*Performance*
+- [ ] Evaluation metrics, e.g., SSIM, PNSR.
+- [ ] Investigate adaptability of model in a dynamic environment.
+
 - [ ] Upload zipped folders of dataset to GitHub
 
 **Check logbook for saved links that might be useful!**

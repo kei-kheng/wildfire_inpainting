@@ -43,3 +43,6 @@ python main.py --data_dir dataset/IR_images --folders 3 5 6 7 --img_scaled_dim 3
 ```
 python inference.py --data_dir dataset --model_path models/test2/generator.pth --img_scaled_dim 320 --coverage 0.15 --batch_size 5 --output_dir inference_results --num_show 5
 ```
+
+# Results
+test1 and test2 in 'results' contain the training conditions for currently known best-known parameters.
