@@ -12,9 +12,9 @@ from image_utils import IR_Images, ImageResize, apply_mask
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_dir", type=str, default="dataset/inference")
-    parser.add_argument("--model_path", type=str, default="models/Burn06_IR/generator.pth")
-    parser.add_argument("--img_scaled_dim", type=int, default=160)  # 1704 x 1280
+    parser.add_argument("--data_dir", type=str, default="dataset")
+    parser.add_argument("--model_path", type=str, default="models/test2/generator.pth")
+    parser.add_argument("--img_scaled_dim", type=int, default=320)  # 1704 x 1280
     parser.add_argument("--coverage", type=float, default=0.15)
     parser.add_argument("--batch_size", type=int, default=5)
     parser.add_argument("--output_dir", type=str, default="inference_results")
@@ -29,7 +29,7 @@ def main():
         T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
-    infer_dataset = IR_Images(args.data_dir, transform=transform)
+    infer_dataset = IR_Images(args.data_dir, ["inference"], transform=transform)
     infer_loader = DataLoader(infer_dataset, batch_size=args.batch_size, shuffle=False)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -56,6 +56,7 @@ def main():
                 out_tensor = torch.stack([images[i], masked_imgs[i], comp[i]], dim=0)  # shape (3,3,H,W)
                 save_path = os.path.join(args.output_dir, f"inferred_{filenames[i]}")
                 vutils.save_image(out_tensor, save_path, nrow=3, normalize=True)
+                print(f"Saved image: {save_path}")
 
 if __name__ == "__main__":
     main()

@@ -9,8 +9,8 @@ This code implements a Generative Adversarial Network (GAN) to perform inpaintin
 # Usage - main.py
 ## Parameters
 ```
---data_dir          Directory containing images use to train the GAN
---max_dataset_size  Specifies the maximum number of images used for training
+--data_dir          Base directory containing folders of images used to train the GAN
+--folders           List of subfolder names to load dataset from
 --img_scaled_dim    The dimension of the longest side of the image after scaling
 --coverage          Fraction of image to be masked
 --epochs            Number of epochs
@@ -24,13 +24,13 @@ This code implements a Generative Adversarial Network (GAN) to perform inpaintin
 
 **Example**
 ```
-python main.py --data_dir dataset/synthetic_coloured_ellipses --img_scaled_dim 80 --coverage 0.15 --epochs 50 --batch_size 64 --lambda_recon 10 --lr 0.0002 --beta1 0.5 --output_dir synthetic_coloured_ellipses --num_show 5
+python main.py --data_dir dataset/IR_images --folders 3 5 6 7 --img_scaled_dim 320 --coverage 0.15 --epochs 50 --batch_size 32 --lambda_recon 10 --lr 0.0002 --beta1 0.5 --output_dir IR_images_3_5_6_7 --num_show 5
 ```
 
 # Usage - inference.py
 ## Parameters
 ```
---data_dir          Directory containing images to perform inference on
+--data_dir          Base directory containing folder of images to perform inference on
 --model_path        Directory to load trained generator from
 --img_scaled_dim    The dimension of the longest side of the image after scaling
 --coverage          Fraction of image to be masked
@@ -41,5 +41,5 @@ python main.py --data_dir dataset/synthetic_coloured_ellipses --img_scaled_dim 8
 
 **Example**
 ```
-python inference.py --data_dir dataset/inference --model_path models/Burn06_IR/generator.pth --img_scaled_dim 80 --coverage 0.15 --batch_size 5 --output_dir inference_results --num_show 5
+python inference.py --data_dir dataset --model_path models/test2/generator.pth --img_scaled_dim 320 --coverage 0.15 --batch_size 5 --output_dir inference_results --num_show 5
 ```

@@ -2,7 +2,6 @@
 import os
 import argparse
 import csv
-import random
 
 import torch
 import torch.nn as nn
@@ -28,8 +27,8 @@ def weights_init(layer):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_dir", type=str, default="dataset")
-    parser.add_argument("--max_dataset_size", type=int, default=1000)
+    parser.add_argument("--data_dir", type=str, default="dataset/IR_images")
+    parser.add_argument("--folders", nargs="+", default=["5"])
     parser.add_argument("--img_scaled_dim", type=int, default=160)  # 1704 x 1280
     parser.add_argument("--coverage", type=float, default=0.15)
     parser.add_argument("--epochs", type=int, default=10)
@@ -52,7 +51,7 @@ def main():
     csv_path = f"results/{args.output_dir}/training_log.csv"
     with open(csv_path, "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["epoch", "lossD", "lossG", "lossG_recon"])
+        writer.writerow(["Epoch", "Batch", "LossD", "LossG", "LossG_recon"])
 
     transform = T.Compose([
         ImageResize(scaled_dim=args.img_scaled_dim),
@@ -63,13 +62,9 @@ def main():
         T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
         ])
     
-    dataset = IR_Images(args.data_dir, transform=transform)  # IR_Images loads dataset in a sorted order
-    indices = list(range(len(dataset)))  # Generate a list of indices to iterate through the dataset
-    random.shuffle(indices)
-    indices = indices[:min(args.max_dataset_size, len(dataset))]  # Apply dataset limit after shuffling
-    dataset = data.Subset(dataset, indices)  # https://pytorch.org/docs/stable/data.html
+    dataset = IR_Images(args.data_dir, args.folders, transform=transform)  # IR_Images loads dataset in a sorted order
+    print(f"Found {len(dataset)} images across subfolders {args.folders}")
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)  # Shuffle batches during each epoch
-    print(f"Using {len(dataset)} shuffled samples from dataset")
 
     # Create/overwrite and save training conditions to a text file
     # vars() returns a dict, items() returns an iterable of (key, value) pairs
@@ -77,6 +72,7 @@ def main():
     with open(txt_path, "w") as f:
         for arg_key, arg_value in vars(args).items():
             f.write(f"--{arg_key} {arg_value}\n")
+        f.write(f"Dataset length: {len(dataset)}\n")
     print(f"Wrote training conditions to: {txt_path}")
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -104,10 +100,6 @@ def main():
 
     for epoch in range(args.epochs):
         for i, (real_imgs, _) in enumerate(dataloader):  # For each batch
-            running_lossD = 0.0
-            running_lossG = 0.0
-            running_lossG_recon = 0.0
-
             real_imgs = real_imgs.to(device)
             masked_imgs, masks = apply_mask(real_imgs, coverage=args.coverage)
 
@@ -164,24 +156,16 @@ def main():
             optimizerG.step()
 
             # PyTorch item() returns a scalar value from a single-element tensor - different from items()!
-            running_lossD += lossD.item()
-            running_lossG += lossG.item()
-            running_lossG_recon += lossG_recon.item()
+            print(
+            f"Epoch [{epoch+1}/{args.epochs}] Batch [{i+1}/{len(dataloader)}] "
+            f"LossD: {lossD.item():.4f}, LossG: {lossG.item():.4f}, LossG_recon: {lossG_recon.item():.4f}"
+            )
 
-        # Calculate average loss = (running loss) / (number of batch per epoch) at the end of each epoch
-        avg_lossD = running_lossD / len(dataloader)
-        avg_lossG = running_lossG / len(dataloader)
-        avg_lossG_recon = running_lossG_recon / len(dataloader)
-
-        print(
-            f"Epoch [{epoch+1}/{args.epochs}] "
-            f"LossD: {avg_lossD:.4f}, LossG: {avg_lossG:.4f}, LossG_recon: {avg_lossG_recon:.4f}"
-        )
-
-        # Append epoch number and losses to created CSV
-        with open(csv_path, "a", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow([epoch + 1, f"{avg_lossD:.4f}", f"{avg_lossG:.4f}", f"{avg_lossG_recon:.4f}"])
+            # Append epoch number, batch number and losses to created CSV
+            with open(csv_path, "a", newline="") as f:
+                writer = csv.writer(f)
+                # Epoch / Batch / LossD / LossG / LossG_recon
+                writer.writerow([epoch + 1, i + 1, f"{lossD.item():.5f}", f"{lossG.item():.5f}", f"{lossG_recon.item():.5f}"])
 
         # Visualize and save results from last batch of every epoch
         with torch.no_grad():

@@ -10,9 +10,14 @@ from torch.utils.data import Dataset
 
 # Dataset
 class IR_Images(Dataset):
-    def __init__(self, data_dir, transform=None):
-        self.files = sorted(glob.glob(os.path.join(data_dir, "*.png")))
+    def __init__(self, data_dir, subfolders, transform=None):
+        self.files = []
         self.transform = transform
+
+        for folder in subfolders:
+            folder_path = os.path.join(data_dir, folder)
+            imgs_in_folder = sorted(glob.glob(os.path.join(folder_path, "*.png")))
+            self.files.extend(imgs_in_folder)
 
     def __len__(self):
         return len(self.files)
