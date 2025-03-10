@@ -1,6 +1,8 @@
 import os
 import glob
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
 import torch
 import torchvision.transforms as T
@@ -96,3 +98,36 @@ def apply_mask(batch, coverage):
     masked = torch.cat(masked_list, dim=0)  # (B,3,H,W)
     masks = torch.cat(mask_list, dim=0)  # (B,3,H,W)
     return masked, masks
+
+def plot_from_csv(output_dir, csv_file="training_log.csv"):
+    # Load CSV as Pandas DataFrame
+    csv_path = f"results/{output_dir}/{csv_file}"
+    df = pd.read_csv(csv_path)
+    # Group by epoch, compute average loss per epoch
+    df_avg = df.groupby("Epoch")[["LossD", "LossG", "LossG_recon"]].mean()
+
+    # Plot LossD and LossG against epoch
+    plt.figure(figsize=(10, 5))
+    # Syntax: plot(x-axis values, y-axis values, legend label)
+    # 'Epoch' would be the index due to groupby()
+    plt.plot(df_avg.index, df_avg["LossD"], label="Discriminator Loss (LossD)")
+    plt.plot(df_avg.index, df_avg["LossG"], label="Generator Loss (LossG)")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("LossD and LossG per Epoch")
+    plt.legend()
+    plt.grid(True)
+    # Save as PNG
+    plt.savefig(f"results/{output_dir}/lossD_lossG_vs_epoch.png", dpi=300)
+    plt.show()
+
+    # Plot LossG_recon against epoch
+    plt.figure(figsize=(10, 5))
+    plt.plot(df_avg.index, df_avg["LossG_recon"], label="Reconstruction Loss (LossG_recon)")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("Reconstruction Loss per Epoch")
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(f"results/{output_dir}/lossG_recon_vs_epoch.png", dpi=300)
+    plt.show()

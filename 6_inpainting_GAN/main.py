@@ -13,7 +13,7 @@ import torch.utils.data as data
 from torch.utils.data import DataLoader
 
 from models import ContextEncoder, PatchDiscriminator
-from image_utils import IR_Images, ImageResize, apply_mask
+from image_utils import IR_Images, ImageResize, apply_mask, plot_from_csv
 
 # Weight initialization according to layer
 # Reference: DCGAN Radford et al., 2015, + Ioffe & Szegedy
@@ -29,10 +29,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_dir", type=str, default="dataset/IR_images")
     parser.add_argument("--folders", nargs="+", default=["5"])
-    parser.add_argument("--img_scaled_dim", type=int, default=160)  # 1704 x 1280
+    parser.add_argument("--img_scaled_dim", type=int, default=320)  # 1704 x 1280
     parser.add_argument("--coverage", type=float, default=0.15)
-    parser.add_argument("--epochs", type=int, default=10)
-    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--epochs", type=int, default=50)
+    parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--lambda_recon", type=int, default=10)
     # Default values based on best practice - learning rate, beta
     parser.add_argument("--lr", type=float, default=0.0002)
@@ -189,6 +189,10 @@ def main():
     print(f"Saved Context Encoder to: models/{args.output_dir}/generator.pth")
     torch.save(discriminator.state_dict(), f"models/{args.output_dir}/discriminator.pth")
     print(f"Saved Patch Discriminator to: models/{args.output_dir}/discriminator.pth")
+
+    # Plot graphs from CSV
+    plot_from_csv(args.output_dir)
+    print("Plotted graphs from CSV")
 
 if __name__ == "__main__":
     main()
