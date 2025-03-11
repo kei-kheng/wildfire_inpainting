@@ -6,14 +6,12 @@ import csv
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torchvision.transforms as T
 # Contains various utilities, mostly for visualization
 import torchvision.utils as vutils
-import torch.utils.data as data
 from torch.utils.data import DataLoader
 
 from models import ContextEncoder, PatchDiscriminator
-from image_utils import IR_Images, ImageResize, apply_mask, plot_from_csv
+from image_utils import IR_Images, get_transform, apply_mask, plot_from_csv
 
 # Weight initialization according to layer
 # Reference: DCGAN Radford et al., 2015, + Ioffe & Szegedy
@@ -53,14 +51,7 @@ def main():
         writer = csv.writer(f)
         writer.writerow(["Epoch", "Batch", "LossD", "LossG", "LossG_recon"])
 
-    transform = T.Compose([
-        ImageResize(scaled_dim=args.img_scaled_dim),
-        T.ToTensor(),
-        # Scale output to [-1, 1]
-        # Reference: https://pytorch.org/vision/main/generated/torchvision.transforms.Normalize.html
-        # Reference: https://discuss.pytorch.org/t/understanding-transform-normalize/21730/21?page=2
-        T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-        ])
+    transform = get_transform(args.img_scaled_dim)
     
     dataset = IR_Images(args.data_dir, args.folders, transform=transform)  # IR_Images loads dataset in a sorted order
     print(f"Found {len(dataset)} images across subfolders {args.folders}")

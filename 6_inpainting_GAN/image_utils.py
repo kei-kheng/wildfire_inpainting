@@ -1,5 +1,6 @@
 import os
 import glob
+import random
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -27,6 +28,9 @@ class IR_Images(Dataset):
     def __getitem__(self, idx):
         img_path = self.files[idx]
         img = Image.open(img_path).convert("RGB")
+        # Random rotation, https://pytorch.org/vision/main/generated/torchvision.transforms.functional.rotate.html
+        img = T.functional.rotate(img, random.choice((0, 90, 180, 270)))
+
         if self.transform:
             img = self.transform(img)
         # Return filename for easier reference when running: https://www.geeksforgeeks.org/python-os-path-basename-method/
@@ -55,6 +59,17 @@ class ImageResize:
         snapped_h = max(self.multiple, (new_h // self.multiple) * self.multiple)
 
         return T.Resize((snapped_h, snapped_w))(img)  # Apply transform to image
+
+# Getter function that returns transform
+def get_transform(scaled_dim=320):
+    return T.Compose([
+        ImageResize(scaled_dim=scaled_dim),
+        T.ToTensor(),
+        # Scale output to [-1, 1]
+        # Reference: https://pytorch.org/vision/main/generated/torchvision.transforms.Normalize.html
+        # Reference: https://discuss.pytorch.org/t/understanding-transform-normalize/21730/21?page=2
+        T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        ])
 
 # Generate a square mask that is placed randomly on image
 def create_random_square_mask(channels, height, width, coverage):

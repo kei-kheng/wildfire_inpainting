@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 
 # Only the generator is needed for inference
 from models import ContextEncoder
-from image_utils import IR_Images, ImageResize, apply_mask
+from image_utils import IR_Images, ImageResize, get_transform, apply_mask
 
 def main():
     parser = argparse.ArgumentParser()
@@ -23,11 +23,7 @@ def main():
 
     os.makedirs(args.output_dir, exist_ok=True)
 
-    transform = T.Compose([
-        ImageResize(scaled_dim=args.img_scaled_dim),
-        T.ToTensor(),
-        T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])
+    transform = get_transform(args.img_scaled_dim)
 
     infer_dataset = IR_Images(args.data_dir, ["inference"], transform=transform)
     infer_loader = DataLoader(infer_dataset, batch_size=args.batch_size, shuffle=False)

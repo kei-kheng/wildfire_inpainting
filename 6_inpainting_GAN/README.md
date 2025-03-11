@@ -45,4 +45,5 @@ python inference.py --data_dir dataset --model_path models/test2/generator.pth -
 ```
 
 # Results
-test1 and test2 in 'results' contain the training conditions for currently known best-known parameters.
+- test1 and test2 contain the training conditions for the currently best-known parameters, differing only in `img_scaled_dim`. It was found that a batch size of 16 yielded the shortest training time and best inpainting performance. Tested: 16, 32, 64 for a dataset size of 500.
+- test3 and test4 trained models on small and big datasets respectively, where each training image is randomly rotated up to 360 degrees. This caused the model to learn useless representation of the black, unfilled regions due to rotation.
