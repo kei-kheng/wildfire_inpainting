@@ -1,5 +1,5 @@
 # Description
-This code implements a Generative Adversarial Network (GAN) to perform inpainting on [overhead infrared (IR) images of a series of prescribed fires on an area of 10 x 10 m](https://www.fs.usda.gov/rds/archive/catalog/RDS-2022-0076). The GAN has two sub-models, the context encoder (generator) and patch discriminator (discriminator).
+This code implements a Generative Adversarial Network (GAN) to perform inpainting on [overhead infrared (IR) images of a series of prescribed fires on an area of 10 x 10 m](https://www.fs.usda.gov/rds/archive/catalog/RDS-2022-0076). The GAN has two sub-models, the context encoder (generator) and patch discriminator (discriminator). The images extracted from each video instance were limited to 100 to make the dataset more compact and diverse. This also avoids the model from biasing and overfitting.
 
 - `main.py` trains and saves the models. During each epoch, the results (ground truth, masked images and inpainted images) are saved to 'results'. **Does not employ train test split.** The training conditions are saved in a TXT file in 'models/{args.output_dir}', epoch number and losses are logged in a CSV file, plotted and saved in 'results'.
 - `inference.py` loads a trained generator and performs inferencing, ideally on dataset it has never seen during its training phase.
@@ -47,3 +47,4 @@ python inference.py --data_dir dataset --model_path models/test2/generator.pth -
 # Results
 - test1 and test2 contain the training conditions for the currently best-known parameters, differing only in `img_scaled_dim`. It was found that a batch size of 16 yielded the shortest training time and best inpainting performance. Tested: 16, 32, 64 for a dataset size of 500.
 - test3 and test4 trained models on small and big datasets respectively, where each training image is randomly rotated up to 360 degrees. This caused the model to learn useless representation of the black, unfilled regions due to rotation.
+- test5 trained a model on rotated images (0, 90, 180, 270) with the appplication of more complex masks.

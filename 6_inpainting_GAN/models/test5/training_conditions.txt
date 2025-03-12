@@ -11,4 +11,6 @@
 --num_show 5
 Dataset length: 522
 
-Time taken: 10:15 - 
+Rotation is chosen from the set [0, 90, 180, 270]. Modified masking technique to improve model's robustness.
+
+Time taken: 1 hour 30 minutes
