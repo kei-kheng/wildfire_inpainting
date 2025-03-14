@@ -30,7 +30,7 @@ python main.py --data_dir dataset/IR_images --folders 3 5 6 7 --img_scaled_dim 3
 # Usage - inference.py
 ## Parameters
 ```
---data_dir          Base directory containing folder of images to perform inference on
+--data_dir          Directory containing images to perform inference on
 --model_path        Directory to load trained generator from
 --img_scaled_dim    The dimension of the longest side of the image after scaling
 --coverage          Fraction of image to be masked

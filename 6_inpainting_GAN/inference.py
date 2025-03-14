@@ -8,24 +8,29 @@ from torch.utils.data import DataLoader
 
 # Only the generator is needed for inference
 from models import ContextEncoder
-from image_utils import IR_Images, ImageResize, get_transform, apply_mask
+from image_utils import IR_Images, get_transform, apply_mask
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_dir", type=str, default="dataset")
+    parser.add_argument("--data_dir", type=str, default="dataset/inference/test")  
     parser.add_argument("--model_path", type=str, default="models/test2/generator.pth")
     parser.add_argument("--img_scaled_dim", type=int, default=320)  # 1704 x 1280
     parser.add_argument("--coverage", type=float, default=0.15)
     parser.add_argument("--batch_size", type=int, default=5)
-    parser.add_argument("--output_dir", type=str, default="inference_results")
+    parser.add_argument("--output_dir", type=str, default="inference_results/test")
     parser.add_argument("--num_show", type=int, default=5)
     args = parser.parse_args()
+
+    split_data_dir = args.data_dir.split('/')
+    base_dir = split_data_dir[0] + '/' + split_data_dir[1]
+    folder_name = []
+    folder_name.append(split_data_dir[2])
 
     os.makedirs(args.output_dir, exist_ok=True)
 
     transform = get_transform(args.img_scaled_dim)
 
-    infer_dataset = IR_Images(args.data_dir, ["inference"], transform=transform)
+    infer_dataset = IR_Images(base_dir, folder_name, transform=transform)
     infer_loader = DataLoader(infer_dataset, batch_size=args.batch_size, shuffle=False)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
