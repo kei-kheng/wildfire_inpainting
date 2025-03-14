@@ -2,7 +2,6 @@ import os
 import argparse
 
 import torch
-import torchvision.transforms as T
 import torchvision.utils as vutils
 from torch.utils.data import DataLoader
 
@@ -48,6 +47,19 @@ def main():
 
             g_out = generator(masked_imgs)
             comp = images * masks + g_out * (1 - masks)
+
+            
+            # Debug
+            # print("comp shape:", comp.shape)
+            # print("images shape:", images.shape)
+            # print("masks shape:", masks.shape)
+            # print("g_out shape:", g_out.shape)
+            
+            # print("comp:", comp)
+            # print("images:", images)
+            # print("masks:", masks)
+            # print("g_out:", g_out)'
+            
 
             # Visualize and save results
             show_count = min(args.num_show, images.size(0))
