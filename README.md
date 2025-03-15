@@ -12,10 +12,10 @@ Lossy image --> Denoising autoencoder --> Inpainting GAN --> Reconstructed, deno
 # To-do [Logbook - 10 March 2025]
 *Model & Dataset*
 - [ ] Improve model to generalize better: expand dataset, train for more epochs.
-- [ ] Data augmentation: rotation, random number of square masks with varying sizes.
+- [X] Data augmentation: rotation, random number of square masks with varying sizes.
 
 *Environment & Agent*
-- [ ] RGB environment
+- [X] RGB environment
 - [ ] List down assumptions: agents' observation patch, information decay rate and **communication** range.
 
 *Performance*
