@@ -15,12 +15,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--env_img_path", type=str, default="env_imgs/default.png")
     parser.add_argument("--img_scaled_dim", type=int, default=320)
-    parser.add_argument("--model_path", type=str, default="models/generator.pth")
+    parser.add_argument("--model_path", type=str, default="models/test6/generator.pth")
     parser.add_argument("--no_of_agents", type=int, default=2)
     parser.add_argument("--agent_patch_size", type=int, default=9)
     parser.add_argument("--agent_comm_range", type=int, default=9)
     parser.add_argument("--steps", type=int, default=10000)
-    parser.add_argument("--output_dir", type=str, default="default_folder")
+    parser.add_argument("--output_dir", type=str, default="test")
     args = parser.parse_args()
 
     os.makedirs(f"results/{args.output_dir}/images", exist_ok=True)
@@ -41,7 +41,7 @@ def main():
     # Convert environment image NumPy array with shape (H, W, 3)
     env_array = img_to_nparray(args.env_img_path, args.img_scaled_dim)
     env_surface = nparray_to_surface(env_array, scale)
-    # Shape -> (C, H, W)
+    # Convert to tensor and normalize, shape -> (C, H, W)
     env_tensor = img_to_tensor(args.env_img_path, args.img_scaled_dim)
     env_h, env_w, env_c = env_array.shape
     # print(f"Environment shape (H, W, C): {env_array.shape}")
@@ -135,9 +135,7 @@ def main():
         mask_3ch = np.repeat(exp_array[np.newaxis, :, :], 3, axis=0)
         mask_tensor = torch.from_numpy(mask_3ch)  # Shape -> (C, H, W)
 
-        comp_tensor = env_tensor * mask_tensor + ((1 - mask_tensor) * predicted_tensor)
-        # Ensure generator's output is within [-1.0, 1.0]
-        comp_tensor = torch.clamp(comp_tensor, -1.0, 1.0)
+        comp_tensor = env_tensor * mask_tensor + predicted_tensor * (1 - mask_tensor)
         comp_array = comp_tensor.numpy()
 
         # print("comp_tensor shape:", comp_tensor.shape)
@@ -155,10 +153,7 @@ def main():
         # (C, H, W) to (H, W, C)
         comp_array = np.transpose(comp_array, (1, 2, 0))
         # Convert to [0, 1] range
-        comp_array = (comp_array + 1.0) / 2.0
-        # Optional clamp again
-        comp_array = np.clip(comp_array, 0, 1)
-
+        comp_array = ((comp_array + 1.0) / 2.0)
         comp_surface = nparray_to_surface(comp_array, scale, multiply_255=True)
         screen.blit(comp_surface, (window_w * (3.0 / 4.0), 40))
 
