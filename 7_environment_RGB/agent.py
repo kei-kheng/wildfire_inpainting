@@ -26,12 +26,12 @@ class Agent:
         self.explored = explored  # 1: Explored, 0: Unknown
 
         # Default: Move to the right
-        self.dy, self.dx = 0, 5
+        self.dy, self.dx = 0, 3
 
     # Change moving direction with 30% probability
     def random_walk(self):
         if random.random() < 0.7:
-            dirs = [(5, 0), (-5, 0), (0, 5), (0, -5)]
+            dirs = [(3, 0), (-3, 0), (0, 3), (0, -3)]
             self.dy, self.dx = random.choice(dirs)
 
         pos_x, pos_y = self.position
