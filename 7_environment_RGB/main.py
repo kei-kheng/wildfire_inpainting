@@ -8,8 +8,7 @@ import torch
 
 from models import ContextEncoder
 from agent import Agent
-from utils import img_to_nparray, img_to_tensor, nparray_to_tensor, nparray_to_surface
-
+from utils import img_to_nparray, img_to_tensor, nparray_to_surface
 
 def main():
     parser = argparse.ArgumentParser()
@@ -32,16 +31,14 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Using device:", device)
     model = ContextEncoder(in_channels=3).to(device)
-    model.load_state_dict(
-        torch.load(args.model_path, weights_only=True, map_location=device)
-    )
+    model.load_state_dict(torch.load(args.model_path, weights_only=True, map_location=device))
     model.eval()
     print(f"Loaded inference model from '{args.model_path}'")
 
-    # Convert environment image NumPy array with shape (H, W, 3)
+    # Convert environment image to NumPy array with shape (H, W, 3)
     env_array = img_to_nparray(args.env_img_path, args.img_scaled_dim)
     env_surface = nparray_to_surface(env_array, scale)
-    # Convert to tensor and normalize, shape -> (C, H, W)
+    # Convert to tensor and normalize
     env_tensor = img_to_tensor(args.env_img_path, args.img_scaled_dim)
     env_h, env_w, env_c = env_array.shape
     # print(f"Environment shape (H, W, C): {env_array.shape}")
@@ -77,7 +74,7 @@ def main():
 
     for step in range(args.steps):
         pygame.display.set_caption("Multi-agent Exploration, t = {}".format(step))
-        clock.tick(60)  # limit FPS to 60
+        clock.tick(60)  # Limit FPS to 60
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -114,26 +111,34 @@ def main():
         screen.blit(text_surface, (window_w * (2.0 / 4.0), 0))
 
         exp_array = agents[f"agent_{args.no_of_agents}"].get_explored()
-        exp_surface = nparray_to_surface(
-            exp_array, scale, grayscale=True, multiply_255=True
-        )
+        # Multiplication by 255 to convert [0, 1] to [0, 255] -> Pygame's expected input format
+        exp_surface = nparray_to_surface(exp_array * 255.0, scale, grayscale=True)
         screen.blit(exp_surface, (window_w * (2.0 / 4.0), 40))
 
         # 4th column - Prediction
         text_surface = window_font.render("Prediction", False, (0, 0, 0))
         screen.blit(text_surface, (window_w * (3.0 / 4.0), 0))
 
-        # Insert batch dimension, convert to generator's expected input format
-        observed_tensor = nparray_to_tensor(obs_array).unsqueeze(0).to(device)
+        '''
+        # -> Passing observed_tensor as the model's input would give weird-coloured outputs -> Took 3 days to figure this out!
+        import torchvision.transforms as T
+        transform = T.Compose([
+            T.ToTensor(),
+            T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            ])
+        observed_tensor = transform(obs_array)
+        observed_tensor = observed_tensor.unsqueeze(0).to(device) # Convert to tensor, normalize to [-1, 1]
+        '''
+        
+        mask_3ch = np.repeat(exp_array[np.newaxis, :, :], 3, axis=0)  # Derive a 3-channeled mask from 'exp_array'
+        mask_tensor = torch.from_numpy(mask_3ch)  # Convert to tensor, shape -> (C, H, W)
+        masked_env_tensor = (env_tensor * mask_tensor).to(device)  # Masked environment
 
         with torch.no_grad():
             # In [-1, 1] range, shape -> (B, C, H, W)
-            predicted_tensor = model(observed_tensor)
+            predicted_tensor = model(masked_env_tensor.unsqueeze(0))
 
         predicted_tensor = predicted_tensor.cpu().squeeze()  # Shape -> (C, H, W)
-
-        mask_3ch = np.repeat(exp_array[np.newaxis, :, :], 3, axis=0)
-        mask_tensor = torch.from_numpy(mask_3ch)  # Shape -> (C, H, W)
 
         comp_tensor = env_tensor * mask_tensor + predicted_tensor * (1 - mask_tensor)
         comp_array = comp_tensor.numpy()
@@ -152,15 +157,14 @@ def main():
         
         # (C, H, W) to (H, W, C)
         comp_array = np.transpose(comp_array, (1, 2, 0))
-        # Convert to [0, 1] range
+        # Convert [-1, 1] to [0, 1] range
         comp_array = ((comp_array + 1.0) / 2.0)
-        comp_surface = nparray_to_surface(comp_array, scale, multiply_255=True)
+        comp_surface = nparray_to_surface(comp_array * 255.0, scale)
         screen.blit(comp_surface, (window_w * (3.0 / 4.0), 40))
 
         pygame.display.flip()
 
     pygame.quit()
-
 
 if __name__ == "__main__":
     main()

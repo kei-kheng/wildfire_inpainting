@@ -63,7 +63,7 @@ class Agent:
 
         # Update agent's maps
         self.observed[x0 : x1 + 1, y0 : y1 + 1, :] = patch
-        self.explored[x0 : x1 + 1, y0 : y1 + 1] = 1
+        self.explored[x0 : x1 + 1, y0 : y1 + 1] = 1.0
         self.random_walk()
 
     def get_position(self):
