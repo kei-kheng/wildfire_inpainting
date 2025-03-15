@@ -5,7 +5,7 @@ import torchvision.transforms as T
 
 # Scales image according to provided 'img_scaled_dim'
 class ImageResize:
-    def __init__(self, scaled_dim, multiple):
+    def __init__(self, scaled_dim, multiple=16):
         self.scaled_dim = scaled_dim
         self.multiple = multiple
 
@@ -24,23 +24,22 @@ class ImageResize:
 
         return T.Resize((snapped_h, snapped_w))(img)
 
-
-def img_to_nparray(img_path, scaled_dim, multiple=16):
+# Rotate image -> Resize -> Optionally convert to NumPy array/tensor and normalize to [-1, 1] range
+def convert_img_to_(img_path, scaled_dim, output=None, rotation=0):
     img = Image.open(img_path).convert("RGB")
-    transform = T.Compose([ImageResize(scaled_dim=scaled_dim, multiple=multiple)])
-    return np.array(transform(img))
+    img = T.functional.rotate(img, rotation)
+    transform = T.Compose([ImageResize(scaled_dim=scaled_dim)])
+    img = transform(img)
 
-
-def img_to_tensor(img_path, scaled_dim, multiple=16):
-    img = Image.open(img_path).convert("RGB")
-    transform = T.Compose(
-        [
-            ImageResize(scaled_dim=scaled_dim, multiple=multiple),
+    if output == "nparray":
+        return np.array(img)
+    
+    if output == "tensor":
+        transform = T.Compose([
             T.ToTensor(),
             T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-        ]
-    )
-    return transform(img)
+            ])
+        return transform(img)
 
 # Convert NumPy array to Pygame surface
 def nparray_to_surface(nparray, scale, grayscale=False):

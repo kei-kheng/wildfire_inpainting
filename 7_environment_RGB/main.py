@@ -8,14 +8,14 @@ import torch
 
 from models import ContextEncoder
 from agent import Agent
-from utils import img_to_nparray, img_to_tensor, nparray_to_surface
+from utils import convert_img_to_, nparray_to_surface
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--env_img_path", type=str, default="env_imgs/default.png")
+    parser.add_argument("--env_img_path", type=str, default="env_imgs/test.png")
     parser.add_argument("--img_scaled_dim", type=int, default=320)
     parser.add_argument("--model_path", type=str, default="models/test6/generator.pth")
-    parser.add_argument("--no_of_agents", type=int, default=2)
+    parser.add_argument("--no_of_agents", type=int, default=5)
     parser.add_argument("--agent_patch_size", type=int, default=9)
     parser.add_argument("--agent_comm_range", type=int, default=9)
     parser.add_argument("--steps", type=int, default=10000)
@@ -26,6 +26,7 @@ def main():
 
     scale = 2
     col = 4
+    random_angle = random.choice((0, 90, 180, 270))
 
     # Load model
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -36,10 +37,10 @@ def main():
     print(f"Loaded inference model from '{args.model_path}'")
 
     # Convert environment image to NumPy array with shape (H, W, 3)
-    env_array = img_to_nparray(args.env_img_path, args.img_scaled_dim)
+    env_array = convert_img_to_(args.env_img_path, args.img_scaled_dim, output="nparray", rotation=random_angle)
     env_surface = nparray_to_surface(env_array, scale)
     # Convert to tensor and normalize
-    env_tensor = img_to_tensor(args.env_img_path, args.img_scaled_dim)
+    env_tensor = convert_img_to_(args.env_img_path, args.img_scaled_dim, output="tensor", rotation=random_angle)
     env_h, env_w, env_c = env_array.shape
     # print(f"Environment shape (H, W, C): {env_array.shape}")
 
@@ -67,7 +68,7 @@ def main():
     pygame.init()
     # Screen setup and clock initialisation
     window_w = env_w * scale * col
-    window_h = env_h * scale
+    window_h = (env_h + 40) * scale
     window_font = pygame.font.SysFont("Comic Sans MS", 24)
     screen = pygame.display.set_mode((window_w, window_h))
     clock = pygame.time.Clock()
@@ -161,6 +162,11 @@ def main():
         comp_array = ((comp_array + 1.0) / 2.0)
         comp_surface = nparray_to_surface(comp_array * 255.0, scale)
         screen.blit(comp_surface, (window_w * (3.0 / 4.0), 40))
+
+        if step % 100 == 0:
+            save_path = f"results/{args.output_dir}/images/step_{step}.png"
+            pygame.image.save(screen, save_path)
+            print(f"Saved image to: {save_path}")
 
         pygame.display.flip()
 
