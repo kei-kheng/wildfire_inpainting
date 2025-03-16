@@ -11,7 +11,7 @@ Lossy image --> Denoising autoencoder --> Inpainting GAN --> Reconstructed, deno
 
 # To-do [Logbook - 10 March 2025]
 *Model & Dataset*
-- [ ] Improve model to generalize better: expand dataset, train for more epochs.
+- [ ] Improve model to generalize better: expand dataset, train for more epochs, modify architecture to use **partial convolution**.
 - [X] Data augmentation: rotation, random number of square masks with varying sizes.
 
 *Environment & Agent*
