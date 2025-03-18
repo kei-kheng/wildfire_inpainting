@@ -10,6 +10,7 @@ import torchvision.transforms as T
 
 from PIL import Image
 from torch.utils.data import Dataset
+from skimage.metrics import structural_similarity as SSIM
 
 # Dataset
 class IR_Images(Dataset):
@@ -45,8 +46,6 @@ class ImageResize:
 
     def __call__(self, img):
         w, h = img.size
-        new_w = 0
-        new_h = 0
 
         if w >= h:
             new_w = self.scaled_dim
@@ -124,7 +123,7 @@ def plot_from_csv(output_dir, csv_file="training_log.csv"):
     csv_path = f"results/{output_dir}/{csv_file}"
     df = pd.read_csv(csv_path)
     # Group by epoch, compute average loss per epoch
-    df_avg = df.groupby("Epoch")[["LossD", "LossG", "LossG_recon"]].mean()
+    df_avg = df.groupby("Epoch")[["LossD", "LossG", "LossG_recon", "PSNR", "SSIM"]].mean()
 
     # Plot LossD and LossG against epoch
     plt.figure(figsize=(10, 5))
@@ -151,3 +150,80 @@ def plot_from_csv(output_dir, csv_file="training_log.csv"):
     plt.grid(True)
     plt.savefig(f"results/{output_dir}/lossG_recon_vs_epoch.png", dpi=300)
     plt.show()
+
+    # Plot PSNR against epoch
+    plt.figure(figsize=(10, 5))
+    plt.plot(df_avg.index, df_avg["PSNR"], label="Peak Signal to Noise Ratio (PSNR)")
+    plt.xlabel("Epoch")
+    plt.ylabel("PSNR (dB)")
+    plt.title("PSNR per Epoch")
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(f"results/{output_dir}/PSNR_vs_epoch.png", dpi=300)
+    plt.show()
+
+    # Plot SSIM against epoch
+    plt.figure(figsize=(10, 5))
+    plt.plot(df_avg.index, df_avg["SSIM"], label="Structural Similarity Index Measure (SSIM)")
+    plt.xlabel("Epoch")
+    plt.ylabel("SSIM")
+    plt.title("SSIM per Epoch")
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(f"results/{output_dir}/SSIM_vs_epoch.png", dpi=300)
+    plt.show()
+
+# Calculate peak signal to noise ratio (PSNR) over inpainted region, returns scalar value in decbels, dB
+# Formula: https://en.wikipedia.org/wiki/Peak_signal-to-noise_ratio
+def cal_PSNR(composite_image, ground_truth, mask):
+    # Consider masked regions only, pick all channels for each pixel location where mask==0
+    comp_inpainted = composite_image[:, mask==0]
+    gt_inpainted = ground_truth[:, mask==0]
+
+    data_range = gt_inpainted.max() - gt_inpainted.min()
+
+    # Calculate MSE
+    MSE = np.mean((comp_inpainted - gt_inpainted)**2)
+    if MSE < 1e-10:
+        return 100.0  # Very identical, see James' dynamicenv.py, line 19
+    
+    PSNR = 10 * np.log10((data_range)**2 / MSE)
+    return PSNR
+
+# Calculate mean structural similarity index (SSIM) over inpainted region
+def cal_SSIM(composite_image, ground_truth, mask):
+    # Find indices that satisfy the condition 'mask==0' (unknown regions)
+    # https://www.programiz.com/python-programming/numpy/methods/argwhere
+    coords = np.argwhere(mask==0)
+
+    # Compare row (axis = 0)
+    x0, y0 = coords.min(axis=0)
+    x1, y1 = coords.max(axis=0) + 1  # +1 for slicing
+
+    # Crop -> (3, H, W)
+    comp_crop = composite_image[:, y0:y1, x0:x1]
+    gt_crop = ground_truth[:, y0:y1, x0:x1]
+    mask_crop = mask[y0:y1, x0:x1]  # Binary/Grayscale
+
+    if comp_crop.size == 0:  # No inpainting needed
+        return 1.0
+
+    data_range = gt_crop.max() - gt_crop.min()
+
+    # Zero out known regions for all 3 channels so SSIM ignores them for structural comparison
+    comp_crop[:, mask_crop==1] = 0.0
+    gt_crop[:, mask_crop==1] = 0.0
+
+    # Adjust SSIM's window size if needed
+    (h_cropped, w_cropped) = comp_crop.shape[-2:]  # comp_crop -> (3, H, W)
+    min_dim = min(h_cropped, w_cropped)
+    win_size = 7
+    # Pick largest odd number below min_dim
+    if min_dim < 7:
+        possible_sizes = [x for x in [5,3,1] if x <= min_dim]
+        win_size = possible_sizes[0] if possible_sizes else 1
+    # Compute SSIM
+    # Syntax: https://scikit-image.org/docs/0.24.x/api/skimage.metrics.html#skimage.metrics.structural_similarity
+    # Image shape: (C, H, W) -> Channel axis = 0
+    SSIM_value = SSIM(gt_crop, comp_crop, data_range = data_range, channel_axis = 0, win_size=win_size)
+    return SSIM_value

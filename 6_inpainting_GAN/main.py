@@ -2,6 +2,7 @@
 import os
 import argparse
 import csv
+import numpy as np
 
 import torch
 import torch.nn as nn
@@ -11,7 +12,14 @@ import torchvision.utils as vutils
 from torch.utils.data import DataLoader
 
 from models import ContextEncoder, PatchDiscriminator
-from image_utils import IR_Images, get_transform, apply_mask, plot_from_csv
+from image_utils import (
+    IR_Images, 
+    get_transform, 
+    apply_mask, 
+    plot_from_csv,
+    cal_PSNR,
+    cal_SSIM
+    )
 
 # Weight initialization according to layer
 # Reference: DCGAN Radford et al., 2015, + Ioffe & Szegedy
@@ -49,7 +57,7 @@ def main():
     csv_path = f"results/{args.output_dir}/training_log.csv"
     with open(csv_path, "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["Epoch", "Batch", "LossD", "LossG", "LossG_recon"])
+        writer.writerow(["Epoch", "Batch", "LossD", "LossG", "LossG_recon", "PSNR", "SSIM"])
 
     transform = get_transform(args.img_scaled_dim)
     
@@ -146,17 +154,45 @@ def main():
             lossG.backward()
             optimizerG.step()
 
+            # Calculate PSNR and SSIM
+            PSNR_vals = []
+            SSIM_vals = []
+
+            with torch.no_grad():
+                for j in range(real_imgs.size(0)):
+                    comp_j = comp[j].cpu().numpy()
+                    real_j = real_imgs[j].cpu().numpy()
+                    mask_j = masks[j].cpu().numpy()
+
+                    # Pass only one channel of mask because each channel of 'masks' is identical
+                    PSNR_val = cal_PSNR(comp_j, real_j, mask_j[0])
+                    SSIM_val = cal_SSIM(comp_j, real_j, mask_j[0])
+
+                    PSNR_vals.append(PSNR_val)
+                    SSIM_vals.append(SSIM_val)
+            
+            avg_PSNR = np.mean(PSNR_vals)
+            avg_SSIM = np.mean(SSIM_vals)
+
             # PyTorch item() returns a scalar value from a single-element tensor - different from items()!
             print(
             f"Epoch [{epoch+1}/{args.epochs}] Batch [{i+1}/{len(dataloader)}] "
-            f"LossD: {lossD.item():.4f}, LossG: {lossG.item():.4f}, LossG_recon: {lossG_recon.item():.4f}"
+            f"LossD: {lossD.item():.4f}, LossG: {lossG.item():.4f}, LossG_recon: {lossG_recon.item():.4f}, "
+            f"PSNR = {avg_PSNR:.4f}, SSIM = {avg_SSIM:.4f}"
             )
 
             # Append epoch number, batch number and losses to created CSV
             with open(csv_path, "a", newline="") as f:
                 writer = csv.writer(f)
-                # Epoch / Batch / LossD / LossG / LossG_recon
-                writer.writerow([epoch + 1, i + 1, f"{lossD.item():.5f}", f"{lossG.item():.5f}", f"{lossG_recon.item():.5f}"])
+                # Epoch / Batch / LossD / LossG / LossG_recon / PSNR / SSIM
+                writer.writerow([
+                    epoch + 1, i + 1, 
+                    f"{lossD.item():.5f}", 
+                    f"{lossG.item():.5f}", 
+                    f"{lossG_recon.item():.5f}", 
+                    f"{avg_PSNR:.4f}", 
+                    f"{avg_SSIM:.4f}"
+                ])
 
         # Visualize and save results from last batch of every epoch
         with torch.no_grad():

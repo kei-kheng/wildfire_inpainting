@@ -50,3 +50,4 @@ python inference.py --data_dir dataset/inference --folders 3 5 6 7 --model_path 
 - test3 and test4 trained models on small and big datasets respectively, where each training image is randomly rotated up to 360 degrees. This caused the model to learn useless representation of the black, unfilled regions due to rotation.
 - test5 and test6 trained models on small (522) and big (903) datasets on rotated images (0, 90, 180, 270) with the appplication of more complex masks.
 - **Split data -> 90% training, 10% validation (inferencing)**
+- test7 validates the functionality to **calculate and plot the performance metrics - SSIM & PSNR**.
