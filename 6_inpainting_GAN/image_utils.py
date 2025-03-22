@@ -118,7 +118,7 @@ def apply_mask(batch, coverage):
     masks = torch.cat(mask_list, dim=0)  # (B,3,H,W)
     return masked, masks
 
-def plot_from_csv(output_dir, csv_file="training_log.csv"):
+def plot_from_csv_training(output_dir, csv_file="training_log.csv"):
     # Load CSV as Pandas DataFrame
     csv_path = f"results/{output_dir}/{csv_file}"
     df = pd.read_csv(csv_path)
@@ -172,6 +172,79 @@ def plot_from_csv(output_dir, csv_file="training_log.csv"):
     plt.grid(True)
     plt.savefig(f"results/{output_dir}/SSIM_vs_epoch.png", dpi=300)
     plt.show()
+
+def plot_from_csv_inferencing(output_dir, csv_file="inference_log.csv"):
+    csv_path = f"inference_results/{output_dir}/{csv_file}"
+    df = pd.read_csv(csv_path)
+    # agg(): https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.agg.html
+    grouped = df.groupby("Folder").agg({"PSNR": ["min","max","mean"], "SSIM": ["min","max","mean"]})
+    # Put folder names into a list
+    folder_names = grouped.index.tolist()
+
+    mean_psnr = grouped["PSNR"]["mean"].values
+    min_psnr  = grouped["PSNR"]["min"].values
+    max_psnr  = grouped["PSNR"]["max"].values
+    mean_ssim = grouped["SSIM"]["mean"].values
+    min_ssim  = grouped["SSIM"]["min"].values
+    max_ssim  = grouped["SSIM"]["max"].values
+
+    # For error bars
+    lower_err_psnr = mean_psnr - min_psnr
+    upper_err_psnr = max_psnr - mean_psnr
+    lower_err_ssim = mean_ssim - min_ssim
+    upper_err_ssim = max_ssim - mean_ssim
+
+    # Make an x-axis index for each folder
+    x_indices = np.arange(len(folder_names))
+
+    # PSNR
+    plt.figure(figsize=(8, 5))
+    # plt.bar(): https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.bar.html
+    plt.bar(
+        x_indices,
+        mean_psnr,
+        color='blue',
+        alpha=0.7,
+        yerr=[lower_err_psnr, upper_err_psnr],
+        capsize=5,
+        align='center'
+    )
+    # plt.xticks(): https://www.geeksforgeeks.org/matplotlib-pyplot-xticks-in-python/
+    plt.xticks(x_indices, folder_names)
+    plt.xlabel("Folder")
+    plt.ylabel("PSNR (dB)")
+    plt.title("PSNR by Folder (min, mean, max)")
+
+    # Text labels for mean
+    for i, val in enumerate(mean_psnr):
+        plt.text(i + 0.25, val + 0.5, f"{val:.2f}", ha='center', fontsize=9)
+
+    plt.savefig(os.path.join(f"inference_results/{output_dir}", "PSNR_per_folder.png"), dpi=300)
+    plt.show()
+
+    # SSIM
+    plt.figure(figsize=(8, 5))
+    plt.bar(
+        x_indices,
+        mean_ssim,
+        color='green',
+        alpha=0.7,
+        yerr=[lower_err_ssim, upper_err_ssim],
+        capsize=5,
+        align='center'
+    )
+    plt.xticks(x_indices, folder_names)
+    plt.xlabel("Folder")
+    plt.ylabel("SSIM")
+    plt.title("SSIM by Folder (min, mean, max)")
+
+    for i, val in enumerate(mean_ssim):
+        plt.text(i + 0.25, val + 0.02, f"{val:.3f}", ha='center', fontsize=9)
+
+    plt.savefig(os.path.join(f"inference_results/{output_dir}", "SSIM_per_folder_bar.png"), dpi=300)
+    plt.show()
+    
+    return
 
 # Calculate peak signal to noise ratio (PSNR) over inpainted region, returns scalar value in decbels, dB
 # Formula: https://en.wikipedia.org/wiki/Peak_signal-to-noise_ratio

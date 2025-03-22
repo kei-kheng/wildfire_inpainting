@@ -16,7 +16,7 @@ from image_utils import (
     IR_Images, 
     get_transform, 
     apply_mask, 
-    plot_from_csv,
+    plot_from_csv_training,
     cal_PSNR,
     cal_SSIM
     )
@@ -218,7 +218,7 @@ def main():
     print(f"Saved Patch Discriminator to: models/{args.output_dir}/discriminator.pth")
 
     # Plot graphs from CSV
-    plot_from_csv(args.output_dir)
+    plot_from_csv_training(args.output_dir)
     print("Plotted graphs from CSV")
 
 if __name__ == "__main__":
