@@ -1,6 +1,7 @@
 # Import libraries
-import argparse
 import os
+import argparse
+import csv
 import random
 import pygame
 import numpy as np
@@ -8,7 +9,13 @@ import torch
 
 from models import ContextEncoder
 from agent import Agent
-from utils import convert_img_to_, nparray_to_surface
+from utils import (
+    convert_img_to_, 
+    nparray_to_surface,
+    cal_PSNR,
+    cal_SSIM,
+    plot_from_csv
+    )
 
 def main():
     parser = argparse.ArgumentParser()
@@ -22,7 +29,13 @@ def main():
     parser.add_argument("--output_dir", type=str, default="test")
     args = parser.parse_args()
 
-    os.makedirs(f"results/{args.output_dir}/images", exist_ok=True)
+    os.makedirs(f"results/{args.output_dir}", exist_ok=True)
+
+    # Write to CSV file
+    csv_path = f"results/{args.output_dir}/log.csv"
+    with open(csv_path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["Step", "PSNR", "SSIM"])
 
     scale = 2
     col = 4
@@ -163,14 +176,36 @@ def main():
         comp_surface = nparray_to_surface(comp_array * 255.0, scale)
         screen.blit(comp_surface, (window_w * (3.0 / 4.0), 40))
 
+        # Calculate PSNR and SSIM, write to CSV
+        if step % 10 == 0:
+            comp_copy = comp_tensor.cpu().numpy().copy()
+            env_copy = env_tensor.cpu().numpy().copy()
+            mask_copy = mask_tensor.cpu().numpy().copy()
+
+            PSNR_val = cal_PSNR(comp_copy, env_copy, mask_copy[0])
+            SSIM_val = cal_SSIM(comp_copy, env_copy, mask_copy[0])
+
+            with open(csv_path, "a", newline="") as f:
+                writer = csv.writer(f)
+                # Step / PNSR / SSIM
+                writer.writerow([
+                    step, 
+                    f"{PSNR_val:.4f}", 
+                    f"{SSIM_val:.4f}"
+                ])
+            
         if step % 100 == 0:
-            save_path = f"results/{args.output_dir}/images/step_{step}.png"
+            save_path = f"results/{args.output_dir}/step_{step}.png"
             pygame.image.save(screen, save_path)
+            # print(f"Step = {step}, PSNR = {PSNR_val:.4f}, SSIM = {SSIM_val:.4f}")
             print(f"Saved image to: {save_path}")
 
         pygame.display.flip()
 
     pygame.quit()
+
+    plot_from_csv(args.output_dir)
+    print("Plotted graphs from CSV")
 
 if __name__ == "__main__":
     main()
