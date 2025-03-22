@@ -19,7 +19,7 @@ Lossy image --> Denoising autoencoder --> Inpainting GAN --> Reconstructed, deno
 - [ ] List down assumptions: agents' observation patch, information decay rate and **communication** range.
 
 *Performance*
-- [ ] Evaluation metrics, e.g., SSIM, PNSR.
+- [X] Evaluation metrics, e.g., SSIM, PNSR.
 - [ ] Investigate adaptability of model in a dynamic environment.
 
 - [ ] Upload zipped folders of dataset to GitHub
