@@ -295,11 +295,15 @@ def cal_SSIM(composite_image, ground_truth, mask):
     comp_crop[:, mask_crop==1] = 0.0
     gt_crop[:, mask_crop==1] = 0.0
 
-    # Adjust SSIM's window size if needed
     (h_cropped, w_cropped) = comp_crop.shape[-2:]  # comp_crop -> (3, H, W)
+
+    # Skip if there is not enough space for a 2x2 region
+    if h_cropped < 2 or w_cropped < 2:
+        return 1.0
+
     min_dim = min(h_cropped, w_cropped)
     win_size = 7
-    # Pick largest odd number below min_dim
+    # Adjust SSIM's window size if needed, pick largest odd number below min_dim
     if min_dim < 7:
         possible_sizes = [x for x in [5,3,1] if x <= min_dim]
         win_size = possible_sizes[0] if possible_sizes else 1
