@@ -69,8 +69,10 @@ def cal_PSNR(composite_image, ground_truth, mask):
     PSNR = 10 * np.log10((data_range)**2 / MSE)
     return PSNR
 
-def cal_SSIM(composite_image, ground_truth, mask):
+def cal_SSIM(composite_image, ground_truth, mask, win_size=7):
     coords = np.argwhere(mask==0)
+    if coords.size == 0:
+        return 1.0
 
     x0, y0 = coords.min(axis=0)
     x1, y1 = coords.max(axis=0) + 1
@@ -81,19 +83,17 @@ def cal_SSIM(composite_image, ground_truth, mask):
 
     if comp_crop.size == 0:
         return 1.0
+    
+    _, h_cropped, w_cropped = comp_crop.shape
+    if h_cropped < win_size or w_cropped < win_size:
+        return 1.0 
 
     data_range = gt_crop.max() - gt_crop.min()
 
     comp_crop[:, mask_crop==1] = 0.0
     gt_crop[:, mask_crop==1] = 0.0
 
-    (h_cropped, w_cropped) = comp_crop.shape[-2:]
-    min_dim = min(h_cropped, w_cropped)
-    win_size = 7
-    if min_dim < 7:
-        possible_sizes = [x for x in [5,3,1] if x <= min_dim]
-        win_size = possible_sizes[0] if possible_sizes else 1
-    SSIM_value = SSIM(gt_crop, comp_crop, data_range = data_range, channel_axis = 0, win_size=win_size)
+    SSIM_value = SSIM(gt_crop, comp_crop, data_range=data_range, channel_axis=0, win_size=win_size)
     return SSIM_value
 
 def plot_from_csv(output_dir, csv_file="log.csv"):
