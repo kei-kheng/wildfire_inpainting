@@ -75,7 +75,7 @@ def create_random_square_masks(channels, height, width, coverage):
     mask_1ch = np.ones((height, width), dtype=np.float32)  # Single-channel mask
 
     total_pixels = height * width
-    num_squares = np.random.randint(1, 5)  # Random number from 1-4
+    num_squares = np.random.randint(1, 5)  # 1-4 square masks
 
     coverage_shares = np.random.random(num_squares)  # Returns a 'num_squares'-element NumPy array of floats in interval [0.0, 1.0)]
     coverage_shares /= coverage_shares.sum()  # Want random numbers to sum to 1
@@ -84,6 +84,8 @@ def create_random_square_masks(channels, height, width, coverage):
     for share in coverage_shares:
         square_area = int(share * total_pixels)
         side_length = max(int(np.sqrt(square_area)), 1)
+        # Ensure each square is at least 8x8 for SSIM calculation
+        side_length = max(side_length, 8)
         half_side = side_length // 2
 
         # Randomly pick a center  within valid boundaries
@@ -295,20 +297,8 @@ def cal_SSIM(composite_image, ground_truth, mask):
     comp_crop[:, mask_crop==1] = 0.0
     gt_crop[:, mask_crop==1] = 0.0
 
-    (h_cropped, w_cropped) = comp_crop.shape[-2:]  # comp_crop -> (3, H, W)
-
-    # Skip if there is not enough space for a 2x2 region
-    if h_cropped < 2 or w_cropped < 2:
-        return 1.0
-
-    min_dim = min(h_cropped, w_cropped)
-    win_size = 7
-    # Adjust SSIM's window size if needed, pick largest odd number below min_dim
-    if min_dim < 7:
-        possible_sizes = [x for x in [5,3,1] if x <= min_dim]
-        win_size = possible_sizes[0] if possible_sizes else 1
     # Compute SSIM
     # Syntax: https://scikit-image.org/docs/0.24.x/api/skimage.metrics.html#skimage.metrics.structural_similarity
     # Image shape: (C, H, W) -> Channel axis = 0
-    SSIM_value = SSIM(gt_crop, comp_crop, data_range = data_range, channel_axis = 0, win_size=win_size)
+    SSIM_value = SSIM(gt_crop, comp_crop, data_range = data_range, channel_axis = 0, win_size=7)
     return SSIM_value
