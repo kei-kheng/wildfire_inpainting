@@ -266,10 +266,12 @@ def cal_PSNR(composite_image, ground_truth, mask):
     return PSNR
 
 # Calculate mean structural similarity index (SSIM) over inpainted region
-def cal_SSIM(composite_image, ground_truth, mask):
+def cal_SSIM(composite_image, ground_truth, mask, win_size=7):
     # Find indices that satisfy the condition 'mask==0' (unknown regions)
     # https://www.programiz.com/python-programming/numpy/methods/argwhere
     coords = np.argwhere(mask==0)
+    if coords.size == 0:  # No hole hence no inpainting
+        return 1.0
 
     # Compare row (axis = 0)
     x0, y0 = coords.min(axis=0)
@@ -290,6 +292,11 @@ def cal_SSIM(composite_image, ground_truth, mask):
 
     if comp_crop.size == 0:  # No inpainting needed
         return 1.0
+    
+    # Don't calculate SSIM if region is too small to judge (<7x7)
+    _, h_cropped, w_cropped = comp_crop.shape
+    if h_cropped < win_size or w_cropped < win_size:
+        return 1.0 
 
     data_range = gt_crop.max() - gt_crop.min()
 
@@ -297,8 +304,7 @@ def cal_SSIM(composite_image, ground_truth, mask):
     comp_crop[:, mask_crop==1] = 0.0
     gt_crop[:, mask_crop==1] = 0.0
 
-    # Compute SSIM
     # Syntax: https://scikit-image.org/docs/0.24.x/api/skimage.metrics.html#skimage.metrics.structural_similarity
     # Image shape: (C, H, W) -> Channel axis = 0
-    SSIM_value = SSIM(gt_crop, comp_crop, data_range = data_range, channel_axis = 0, win_size=7)
+    SSIM_value = SSIM(gt_crop, comp_crop, data_range=data_range, channel_axis=0, win_size=win_size)
     return SSIM_value
