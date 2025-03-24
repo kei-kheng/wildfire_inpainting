@@ -165,7 +165,7 @@ def plot_from_csv_training(output_dir, csv_file="training_log.csv"):
     plt.show()
 
     # Plot SSIM against epoch
-    plt.figure(figsize=(12, 7,5))
+    plt.figure(figsize=(10, 5))
     plt.plot(df_avg.index, df_avg["SSIM"], label="Structural Similarity Index Measure (SSIM)")
     plt.xlabel("Epoch")
     plt.ylabel("SSIM")
@@ -272,7 +272,8 @@ def cal_SSIM(composite_image, ground_truth, mask, win_size=7):
     coords = np.argwhere(mask==0)
     if coords.size == 0:  # No hole hence no inpainting
         return 1.0
-
+    
+    # Minimal bounding box for SSIM calculation -> Union of all square masks
     # Compare row (axis = 0)
     x0, y0 = coords.min(axis=0)
     x1, y1 = coords.max(axis=0) + 1  # +1 for slicing
