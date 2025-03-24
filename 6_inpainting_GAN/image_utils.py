@@ -165,7 +165,7 @@ def plot_from_csv_training(output_dir, csv_file="training_log.csv"):
     plt.show()
 
     # Plot SSIM against epoch
-    plt.figure(figsize=(10, 5))
+    plt.figure(figsize=(12, 7,5))
     plt.plot(df_avg.index, df_avg["SSIM"], label="Structural Similarity Index Measure (SSIM)")
     plt.xlabel("Epoch")
     plt.ylabel("SSIM")
@@ -200,7 +200,7 @@ def plot_from_csv_inferencing(output_dir, csv_file="inference_log.csv"):
     x_indices = np.arange(len(folder_names))
 
     # PSNR
-    plt.figure(figsize=(8, 5))
+    plt.figure(figsize=(12, 7.5))
     # plt.bar(): https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.bar.html
     plt.bar(
         x_indices,
@@ -218,14 +218,14 @@ def plot_from_csv_inferencing(output_dir, csv_file="inference_log.csv"):
     plt.title("PSNR by Folder (min, mean, max)")
 
     # Text labels for mean
-    for i, val in enumerate(mean_psnr):
-        plt.text(i + 0.25, val + 0.5, f"{val:.2f}", ha='center', fontsize=9)
+    # for i, val in enumerate(mean_psnr):
+    #     plt.text(i + 0.25, val + 0.5, f"{val:.2f}", ha='center', fontsize=9)
 
     plt.savefig(os.path.join(f"inference_results/{output_dir}", "PSNR_per_folder.png"), dpi=300)
     plt.show()
 
     # SSIM
-    plt.figure(figsize=(8, 5))
+    plt.figure(figsize=(12, 7.5))
     plt.bar(
         x_indices,
         mean_ssim,
@@ -240,8 +240,8 @@ def plot_from_csv_inferencing(output_dir, csv_file="inference_log.csv"):
     plt.ylabel("SSIM")
     plt.title("SSIM by Folder (min, mean, max)")
 
-    for i, val in enumerate(mean_ssim):
-        plt.text(i + 0.25, val + 0.02, f"{val:.3f}", ha='center', fontsize=9)
+    # for i, val in enumerate(mean_ssim):
+    #     plt.text(i + 0.25, val + 0.02, f"{val:.3f}", ha='center', fontsize=9)
 
     plt.savefig(os.path.join(f"inference_results/{output_dir}", "SSIM_per_folder_bar.png"), dpi=300)
     plt.show()
