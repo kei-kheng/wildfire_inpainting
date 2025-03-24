@@ -10,3 +10,5 @@
 --output_dir test8
 --num_show 5
 Dataset length: 2434
+
+Training time: 12 hours 23 minutes
