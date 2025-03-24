@@ -10,3 +10,5 @@
 --output_dir test9
 --num_show 5
 Dataset length: 2434
+
+Time taken: 3 hours 35 minutes
