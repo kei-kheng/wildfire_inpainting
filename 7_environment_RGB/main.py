@@ -6,6 +6,7 @@ import random
 import pygame
 import numpy as np
 import torch
+import itertools # For distance measurement between agents
 
 from models import ContextEncoder
 from agent import Agent
@@ -26,7 +27,7 @@ def main():
     parser.add_argument("--agent_patch_size", type=int, default=9)
     parser.add_argument("--agent_comm_range", type=int, default=9)
     parser.add_argument("--steps", type=int, default=10000)
-    parser.add_argument("--output_dir", type=str, default="test2")
+    parser.add_argument("--output_dir", type=str, default="test3")
     args = parser.parse_args()
 
     os.makedirs(f"results/{args.output_dir}", exist_ok=True)
@@ -119,6 +120,52 @@ def main():
         # Update agents' observation and perform random walk
         for i in range(1, args.no_of_agents + 1):
             agents[f"agent_{i}"].measure(env_array)
+
+        # Measure Pythagorean distance and update maps if close enough
+        agent_names = list(agents.keys())
+        '''
+        Reference: https://docs.python.org/3/library/itertools.html#itertools.combinations
+        Form and iterate through unique, two-agent-subsets from the list
+        '''
+        for i, j in itertools.combinations(agent_names, 2):
+            agent_i = agents[i]
+            agent_j = agents[j]
+
+            pos_i = np.array(agent_i.get_position())
+            pos_j = np.array(agent_j.get_position())
+
+            # Euclidean/Pythagorean distance
+            # Reference: https://stackoverflow.com/questions/1401712/how-can-the-euclidean-distance-be-calculated-with-numpy
+            distance = np.linalg.norm(pos_i - pos_j)
+
+            # If close enough, exchange information
+            if distance <= args.agent_comm_range:
+                obs_i = agent_i.get_observation()
+                obs_j = agent_j.get_observation()
+                exp_i = agent_i.get_explored()
+                exp_j = agent_j.get_explored()
+
+                # Add new axis at end -> Shape: (H, W, 1) for broadcast-multiplication between exp and obs
+                # wca -> with channel axis
+                exp_i_wca = exp_i[..., None]
+                exp_j_wca = exp_j[..., None]
+
+                # Weighted sum of obs using exp as weights
+                combined_obs = obs_i * exp_i_wca + obs_j * exp_j_wca
+                sum_exp = exp_i_wca + exp_j_wca
+                # Temporarily set unexplored regions 0 -> 1 to avoid division by 0 error
+                # Positions where sum_exp > 0 are explored regions
+                sum_exp[sum_exp == 0] = 1
+                averaged_obs = combined_obs / sum_exp
+
+                # Combine explored maps using logical OR
+                combined_exp = np.logical_or(exp_i, exp_j).astype(np.float32)
+
+                # Update both agents, .copy() to avoid accidental shared memory
+                agent_i.observed = averaged_obs.copy()
+                agent_j.observed = averaged_obs.copy()
+                agent_i.explored = combined_exp.copy()
+                agent_j.explored = combined_exp.copy() 
 
         obs_array = agents[f"agent_{displayed_agent}"].get_observation()
         obs_surface = nparray_to_surface(obs_array, scale)
