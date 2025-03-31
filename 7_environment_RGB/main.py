@@ -21,12 +21,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--env_img_path", type=str, default="env_imgs/test.png")
     parser.add_argument("--img_scaled_dim", type=int, default=320)
-    parser.add_argument("--model_path", type=str, default="models/test6/generator.pth")
+    parser.add_argument("--model_path", type=str, default="models/test8/generator.pth")
     parser.add_argument("--no_of_agents", type=int, default=5)
     parser.add_argument("--agent_patch_size", type=int, default=9)
     parser.add_argument("--agent_comm_range", type=int, default=9)
     parser.add_argument("--steps", type=int, default=10000)
-    parser.add_argument("--output_dir", type=str, default="test")
+    parser.add_argument("--output_dir", type=str, default="test2")
     args = parser.parse_args()
 
     os.makedirs(f"results/{args.output_dir}", exist_ok=True)
@@ -40,6 +40,8 @@ def main():
     scale = 2
     col = 4
     random_angle = random.choice((0, 90, 180, 270))
+    # Decide which agent's maps to display
+    displayed_agent = 1
 
     # Load model
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -57,15 +59,22 @@ def main():
     env_h, env_w, env_c = env_array.shape
     # print(f"Environment shape (H, W, C): {env_array.shape}")
 
+    '''
+    # Code snippet before communication between agents was implemented
     # Initialize maps shared by the agents
     observed_map = np.zeros((env_h, env_w, env_c), dtype=np.float32)  # RGB
     # Channel number omitted, binary map
     explored_map = np.zeros((env_h, env_w), dtype=np.float32)  # Grayscale
+    '''
 
     # Instantiate agents at runtime: agent_1, agent_2...
+    # Each agent accesses and updates their own maps only
     # Be careful when passing 'position' -> Invert them! 
     agents = {}
     for i in range(1, args.no_of_agents + 1):
+        observed_map = np.zeros((env_h, env_w, env_c), dtype=np.float32)
+        explored_map = np.zeros((env_h, env_w), dtype=np.float32)
+
         agents[f"agent_{i}"] = Agent(
             position=(  # Pass coordinates as (y, x) -> Tested
                 random.randint(0, env_h),
@@ -111,8 +120,7 @@ def main():
         for i in range(1, args.no_of_agents + 1):
             agents[f"agent_{i}"].measure(env_array)
 
-        # Observation is shared hence it makes no difference from which agent it is from
-        obs_array = agents[f"agent_{args.no_of_agents}"].get_observation()
+        obs_array = agents[f"agent_{displayed_agent}"].get_observation()
         obs_surface = nparray_to_surface(obs_array, scale)
         screen.blit(obs_surface, (window_w * (1.0 / 4.0), 40))
 
@@ -124,7 +132,7 @@ def main():
         text_surface = window_font.render("Explored Region", False, (0, 0, 0))
         screen.blit(text_surface, (window_w * (2.0 / 4.0), 0))
 
-        exp_array = agents[f"agent_{args.no_of_agents}"].get_explored()
+        exp_array = agents[f"agent_{displayed_agent}"].get_explored()
         # Multiplication by 255 to convert [0, 1] to [0, 255] -> Pygame's expected input format
         exp_surface = nparray_to_surface(exp_array * 255.0, scale, grayscale=True)
         screen.blit(exp_surface, (window_w * (2.0 / 4.0), 40))
