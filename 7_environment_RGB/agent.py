@@ -14,7 +14,7 @@ Agent's attributes:
 
 
 class Agent:
-    def __init__(self, position, env_size, patch_size, comm_range, observed, explored):
+    def __init__(self, position, env_size, patch_size, comm_range, observed, explored, confidence):
         self.position = position
         self.env_w = env_size[0]
         self.env_h = env_size[1]
@@ -25,6 +25,9 @@ class Agent:
         # Maps storing information of what the agents have seen and regions they have explored
         self.observed = observed  # 3 channels
         self.explored = explored  # 1: Explored, 0: Unknown
+
+        # To model information decay/data freshness
+        self.confidence = confidence
 
         # Default: Move to the right
         self.dy, self.dx = 0, 3
@@ -79,7 +82,7 @@ class Agent:
         averaged_obs = weighted_obs / sum_exp
         return averaged_obs
 
-    def communicate_with(self, other_agent, time_step=None, log_path=None):
+    def communicate_with(self, other_agent):
         obs_self = self.get_observation()
         obs_other = other_agent.get_observation()
         exp_self = self.get_explored()
@@ -98,13 +101,6 @@ class Agent:
         other_agent.set_observation(averaged_obs.copy())
         self.set_explored(combined_exp.copy())
         other_agent.set_explored(combined_exp.copy())
-
-        if time_step is not None and log_path is not None:
-            with open(log_path, "a") as log_file:
-                log_file.write(f"At t = {time_step}, {self} communicated with {other_agent}\n")
-
-    def __str__(self):
-        return f"Agent at {self.position}"
 
     def get_position(self):
         return self.position

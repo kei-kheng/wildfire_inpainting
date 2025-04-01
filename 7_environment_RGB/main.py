@@ -26,20 +26,30 @@ def main():
     parser.add_argument("--no_of_agents", type=int, default=5)
     parser.add_argument("--agent_patch_size", type=int, default=9)
     parser.add_argument("--agent_comm_range", type=int, default=9)
-    parser.add_argument("--steps", type=int, default=10000)
+    parser.add_argument("--agent_confidence_decay", type=float, default=0.02)
+    parser.add_argument("--agent_confidence_threshold", type=float, default=0.3)
     parser.add_argument("--log_comm", action="store_true")
+    parser.add_argument("--steps", type=int, default=10000)
     parser.add_argument("--output_dir", type=str, default="test4")
     args = parser.parse_args()
 
     os.makedirs(f"results/{args.output_dir}", exist_ok=True)
     # Option to log communication
     if args.log_comm:
-        log_path = f"results/{args.output_dir}/communication_log.txt"
-        with open(log_path, "w") as f:
-            f.write("Communication Log\n")
+        comm_log_path = f"results/{args.output_dir}/communication_log.csv"
+        with open(comm_log_path, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["Step", "Agent A", "A's Position", "Agent B", "B's Position"])
+    
+    # Log simulation conditions
+    sim_log_path = f"results/{args.output_dir}/simulation_conditions.txt"
+    with open(sim_log_path, "w") as f:
+        for arg_key, arg_value in vars(args).items():
+            f.write(f"--{arg_key} {arg_value}\n")
+    print(f"Wrote simulation conditions to: {sim_log_path}")
 
     # Write to CSV file
-    csv_path = f"results/{args.output_dir}/log.csv"
+    csv_path = f"results/{args.output_dir}/evaluation_log.csv"
     with open(csv_path, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(["Step", "PSNR", "SSIM"])
@@ -81,6 +91,7 @@ def main():
     for i in range(1, args.no_of_agents + 1):
         observed_map = np.zeros((env_h, env_w, env_c), dtype=np.float32)
         explored_map = np.zeros((env_h, env_w), dtype=np.float32)
+        confidence_matrix = np.zeros((env_h, env_w), dtype=np.float32)
 
         agents[f"agent_{i}"] = Agent(
             position=(  # Pass coordinates as (y, x) -> Tested
@@ -92,6 +103,7 @@ def main():
             comm_range=args.agent_comm_range,
             observed=observed_map,
             explored=explored_map,
+            confidence=confidence_matrix
         )
 
     pygame.init()
@@ -146,10 +158,18 @@ def main():
 
             # If close enough, exchange information
             if distance <= args.agent_comm_range:
+                agent_i.communicate_with(agent_j)
                 if args.log_comm:
-                    agent_i.communicate_with(agent_j, time_step=step, log_path=log_path)
-                else:
-                    agent_i.communicate_with(agent_j)
+                    with open(comm_log_path, "a", newline="") as f:
+                        writer = csv.writer(f)
+                        # Step / Agent A / A's Position / Agent B / B's Position
+                        writer.writerow([
+                            step, 
+                            i, 
+                            agent_i.get_position(),
+                            j,
+                            agent_j.get_position()
+                        ])
 
         obs_array = agents[f"agent_{displayed_agent}"].get_observation()
         obs_surface = nparray_to_surface(obs_array, scale)
