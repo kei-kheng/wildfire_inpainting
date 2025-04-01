@@ -27,10 +27,16 @@ def main():
     parser.add_argument("--agent_patch_size", type=int, default=9)
     parser.add_argument("--agent_comm_range", type=int, default=9)
     parser.add_argument("--steps", type=int, default=10000)
-    parser.add_argument("--output_dir", type=str, default="test3")
+    parser.add_argument("--log_comm", action="store_true")
+    parser.add_argument("--output_dir", type=str, default="test4")
     args = parser.parse_args()
 
     os.makedirs(f"results/{args.output_dir}", exist_ok=True)
+    # Option to log communication
+    if args.log_comm:
+        log_path = f"results/{args.output_dir}/communication_log.txt"
+        with open(log_path, "w") as f:
+            f.write("Communication Log\n")
 
     # Write to CSV file
     csv_path = f"results/{args.output_dir}/log.csv"
@@ -140,32 +146,10 @@ def main():
 
             # If close enough, exchange information
             if distance <= args.agent_comm_range:
-                obs_i = agent_i.get_observation()
-                obs_j = agent_j.get_observation()
-                exp_i = agent_i.get_explored()
-                exp_j = agent_j.get_explored()
-
-                # Add new axis at end -> Shape: (H, W, 1) for broadcast-multiplication between exp and obs
-                # wca -> with channel axis
-                exp_i_wca = exp_i[..., None]
-                exp_j_wca = exp_j[..., None]
-
-                # Weighted sum of obs using exp as weights
-                combined_obs = obs_i * exp_i_wca + obs_j * exp_j_wca
-                sum_exp = exp_i_wca + exp_j_wca
-                # Temporarily set unexplored regions 0 -> 1 to avoid division by 0 error
-                # Positions where sum_exp > 0 are explored regions
-                sum_exp[sum_exp == 0] = 1
-                averaged_obs = combined_obs / sum_exp
-
-                # Combine explored maps using logical OR
-                combined_exp = np.logical_or(exp_i, exp_j).astype(np.float32)
-
-                # Update both agents, .copy() to avoid accidental shared memory
-                agent_i.observed = averaged_obs.copy()
-                agent_j.observed = averaged_obs.copy()
-                agent_i.explored = combined_exp.copy()
-                agent_j.explored = combined_exp.copy() 
+                if args.log_comm:
+                    agent_i.communicate_with(agent_j, time_step=step, log_path=log_path)
+                else:
+                    agent_i.communicate_with(agent_j)
 
         obs_array = agents[f"agent_{displayed_agent}"].get_observation()
         obs_surface = nparray_to_surface(obs_array, scale)

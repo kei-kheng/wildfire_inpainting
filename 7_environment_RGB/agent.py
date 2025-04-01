@@ -1,5 +1,6 @@
 import random
 import pygame
+import numpy as np
 
 """
 Agent's attributes:
@@ -65,6 +66,45 @@ class Agent:
         self.observed[x0 : x1 + 1, y0 : y1 + 1, :] = patch
         self.explored[x0 : x1 + 1, y0 : y1 + 1] = 1.0
         self.random_walk()
+    
+    @staticmethod
+    # Does not depend on any instance attributes
+    def average_obs(obs_1, exp_1, obs_2, exp_2):
+        # Calculate weighted sum of obs uisng exp as weights
+        weighted_obs = obs_1 * exp_1 + obs_2 * exp_2
+        sum_exp = exp_1 + exp_2
+        # Temporarily set unexplored regions 0 -> 1 to avoid division by 0 error
+        # Positions where sum_exp > 0 are explored regions
+        sum_exp[sum_exp == 0] = 1
+        averaged_obs = weighted_obs / sum_exp
+        return averaged_obs
+
+    def communicate_with(self, other_agent, time_step=None, log_path=None):
+        obs_self = self.get_observation()
+        obs_other = other_agent.get_observation()
+        exp_self = self.get_explored()
+        exp_other = other_agent.get_explored()
+
+        # Add channel axis at end (H, W, 1) for broadcast-multiplication between exp and obs
+        # wca = with channel axis
+        exp_self_wca = exp_self[..., None]
+        exp_other_wca = exp_other[..., None]
+
+        averaged_obs = Agent.average_obs(obs_self, exp_self_wca, obs_other, exp_other_wca)
+        combined_exp = np.logical_or(exp_self, exp_other).astype(np.float32)
+
+        # Update both agents, .copy() to avoid accidental shared memory
+        self.set_observation(averaged_obs.copy())
+        other_agent.set_observation(averaged_obs.copy())
+        self.set_explored(combined_exp.copy())
+        other_agent.set_explored(combined_exp.copy())
+
+        if time_step is not None and log_path is not None:
+            with open(log_path, "a") as log_file:
+                log_file.write(f"At t = {time_step}, {self} communicated with {other_agent}\n")
+
+    def __str__(self):
+        return f"Agent at {self.position}"
 
     def get_position(self):
         return self.position
@@ -74,6 +114,12 @@ class Agent:
 
     def get_explored(self):
         return self.explored
+    
+    def set_observation(self, observed):
+        self.observed = observed
+
+    def set_explored(self, explored):
+        self.explored = explored
 
     # Draw agent, x_offset is provided for the agents to be drawn in the right column of the window
     def draw(self, screen, scale, x_offset):
