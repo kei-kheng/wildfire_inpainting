@@ -30,7 +30,7 @@ def main():
     parser.add_argument("--agent_confidence_threshold", type=float, default=0.3)
     parser.add_argument("--log_comm", action="store_true")
     parser.add_argument("--steps", type=int, default=10000)
-    parser.add_argument("--output_dir", type=str, default="test4")
+    parser.add_argument("--output_dir", type=str, default="test")
     args = parser.parse_args()
 
     os.makedirs(f"results/{args.output_dir}", exist_ok=True)
@@ -103,7 +103,9 @@ def main():
             comm_range=args.agent_comm_range,
             observed=observed_map,
             explored=explored_map,
-            confidence=confidence_matrix
+            confidence=confidence_matrix,
+            confidence_decay=args.agent_confidence_decay,
+            confidence_threshold=args.agent_confidence_threshold
         )
 
     pygame.init()
@@ -137,6 +139,7 @@ def main():
 
         # Update agents' observation and perform random walk
         for i in range(1, args.no_of_agents + 1):
+            agents[f"agent_{i}"].update_confidence()
             agents[f"agent_{i}"].measure(env_array)
 
         # Measure Pythagorean distance and update maps if close enough
@@ -164,11 +167,7 @@ def main():
                         writer = csv.writer(f)
                         # Step / Agent A / A's Position / Agent B / B's Position
                         writer.writerow([
-                            step, 
-                            i, 
-                            agent_i.get_position(),
-                            j,
-                            agent_j.get_position()
+                            step, i, agent_i.get_position(), j, agent_j.get_position()
                         ])
 
         obs_array = agents[f"agent_{displayed_agent}"].get_observation()

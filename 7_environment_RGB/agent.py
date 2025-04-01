@@ -14,7 +14,7 @@ Agent's attributes:
 
 
 class Agent:
-    def __init__(self, position, env_size, patch_size, comm_range, observed, explored, confidence):
+    def __init__(self, position, env_size, patch_size, comm_range, observed, explored, confidence, confidence_decay, confidence_threshold):
         self.position = position
         self.env_w = env_size[0]
         self.env_h = env_size[1]
@@ -28,6 +28,8 @@ class Agent:
 
         # To model information decay/data freshness
         self.confidence = confidence
+        self.confidence_decay = confidence_decay
+        self.confidence_threshold = confidence_threshold
 
         # Default: Move to the right
         self.dy, self.dx = 0, 3
@@ -68,6 +70,8 @@ class Agent:
         # Update agent's maps
         self.observed[x0 : x1 + 1, y0 : y1 + 1, :] = patch
         self.explored[x0 : x1 + 1, y0 : y1 + 1] = 1.0
+        # Agents are very confident with newly observed areas
+        self.confidence[x0 : x1 + 1, y0 : y1 + 1] = 1.0
         self.random_walk()
     
     @staticmethod
@@ -101,6 +105,23 @@ class Agent:
         other_agent.set_observation(averaged_obs.copy())
         self.set_explored(combined_exp.copy())
         other_agent.set_explored(combined_exp.copy())
+
+    '''
+    Confidence Mechanism
+    - Purpose: Want agents to be able to adapt to dynamic environment
+    - Confidence ranges from 0.0 to 1.0
+    - Newly observed areas are assigned confidence of 1.0
+    - Confidence decays with time
+    - When confidence drops below a certain threshold, 'delete' associated observed areas and set explored to False
+    '''
+    def update_confidence(self):
+        # Update confidence matrix
+        self.confidence *= (1 - self.confidence_decay)
+        # 'Delete' if below threshold
+        low_conf_mask = self.confidence < self.confidence_threshold
+        # Update agent's maps
+        self.observed[low_conf_mask] = 0.00
+        self.explored[low_conf_mask] = 0.00
 
     def get_position(self):
         return self.position
