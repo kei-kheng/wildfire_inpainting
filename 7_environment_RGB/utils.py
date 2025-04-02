@@ -56,44 +56,17 @@ def nparray_to_surface(nparray, scale, grayscale=False):
     surface = pygame.surfarray.make_surface(np.transpose(array_scaled, (1, 0, 2)))
     return surface
 
-def cal_PSNR(composite_image, ground_truth, mask):
-    comp_inpainted = composite_image[:, mask==0]
-    gt_inpainted = ground_truth[:, mask==0]
-
-    data_range = gt_inpainted.max() - gt_inpainted.min()
-
-    MSE = np.mean((comp_inpainted - gt_inpainted)**2)
+def cal_PSNR(composite_image, ground_truth):
+    data_range = ground_truth.max() - ground_truth.min()
+    MSE = np.mean((composite_image - ground_truth)**2)
     if MSE < 1e-10:
         return 100.0
-    
     PSNR = 10 * np.log10((data_range)**2 / MSE)
     return PSNR
 
-def cal_SSIM(composite_image, ground_truth, mask, win_size=7):
-    coords = np.argwhere(mask==0)
-    if coords.size == 0:
-        return 1.0
-
-    x0, y0 = coords.min(axis=0)
-    x1, y1 = coords.max(axis=0) + 1
-    
-    comp_crop = composite_image[:, y0:y1, x0:x1]
-    gt_crop = ground_truth[:, y0:y1, x0:x1]
-    mask_crop = mask[y0:y1, x0:x1]
-
-    if comp_crop.size == 0:
-        return 1.0
-    
-    _, h_cropped, w_cropped = comp_crop.shape
-    if h_cropped < win_size or w_cropped < win_size:
-        return 1.0 
-
-    data_range = gt_crop.max() - gt_crop.min()
-
-    comp_crop[:, mask_crop==1] = 0.0
-    gt_crop[:, mask_crop==1] = 0.0
-
-    SSIM_value = SSIM(gt_crop, comp_crop, data_range=data_range, channel_axis=0, win_size=win_size)
+def cal_SSIM(composite_image, ground_truth, win_size=7):
+    data_range = ground_truth.max() - ground_truth.min()
+    SSIM_value = SSIM(ground_truth, composite_image, data_range=data_range, channel_axis=0, win_size=win_size)
     return SSIM_value
 
 def plot_from_csv(output_dir, csv_file="log.csv"):

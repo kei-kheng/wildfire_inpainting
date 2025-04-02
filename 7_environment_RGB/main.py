@@ -6,6 +6,7 @@ import random
 import pygame
 import numpy as np
 import torch
+import torchvision.transforms as T
 import itertools # For distance measurement between agents
 
 from models import ContextEncoder
@@ -155,6 +156,7 @@ def main():
             env_array = convert_img_to_(args.env_img_path_2, args.img_scaled_dim, output="nparray", rotation=random_angle)
             env_surface = nparray_to_surface(env_array, scale)
             env_tensor = convert_img_to_(args.env_img_path_2, args.img_scaled_dim, output="tensor", rotation=random_angle)
+            print("Environment changed!")
 
         text_surface = window_font.render("Ground Truth", False, (0, 0, 0))
         screen.blit(text_surface, (x_offset, 0))
@@ -169,6 +171,10 @@ def main():
         
         obs_array = agents["agent_1"].get_observation()
         obs_surface = nparray_to_surface(obs_array, scale)
+        # (H, W, C) to (C, H, W), use permute() for tensors and transpose() for NumPy arrays
+        obs_tensor = torch.from_numpy(obs_array).permute(2, 0, 1).float()
+        # Normalize to [-1.0, 1.0]
+        obs_tensor = (obs_tensor / 255.0 - 0.5) * 2.0
         screen.blit(obs_surface, (window_w * (1.0 / 4.0), y_offset))
 
         explored_map = agents["agent_1"].get_explored()
@@ -260,7 +266,8 @@ def main():
         
         mask_3ch = np.repeat(exp_array[np.newaxis, :, :], 3, axis=0)  # Derive a 3-channeled mask from 'exp_array'
         mask_tensor = torch.from_numpy(mask_3ch)  # Convert to tensor, shape -> (C, H, W)
-        masked_env_tensor = (env_tensor * mask_tensor).to(device)  # Masked environment
+        # masked_env_tensor = (env_tensor * mask_tensor).to(device)  # Masked environment for static case
+        masked_env_tensor = (obs_tensor * mask_tensor).to(device)
 
         with torch.no_grad():
             # In [-1, 1] range, shape -> (B, C, H, W)
@@ -268,18 +275,21 @@ def main():
 
         predicted_tensor = predicted_tensor.cpu().squeeze()  # Shape -> (C, H, W)
 
-        comp_tensor = env_tensor * mask_tensor + predicted_tensor * (1 - mask_tensor)
+        # comp_tensor = env_tensor * mask_tensor + predicted_tensor * (1 - mask_tensor) # For static environment
+        comp_tensor = obs_tensor * mask_tensor + predicted_tensor * (1 - mask_tensor)
         comp_array = comp_tensor.numpy()
 
         # print("comp_tensor shape:", comp_tensor.shape)
         # print("comp_array shape:", comp_array.shape)
         # print("env_tensor shape:", env_tensor.shape)
+        # print("obs_tensor shape:", obs_tensor.shape)
         # print("mask_tensor shape:", mask_tensor.shape)
         # print("predicted_tensor shape:", predicted_tensor.shape)
 
         # print("comp_tensor:", comp_tensor)
         # print("comp_array:", comp_array)
         # print("env_tensor:", env_tensor)
+        # print("obs_tensor shape:", obs_tensor)
         # print("mask_tensor:", mask_tensor)
         # print("predicted_tensor:", predicted_tensor)
         
@@ -303,15 +313,19 @@ def main():
             screen.blit(text_surface, (window_w * (idx / 4.0) + 2 * x_offset + legend_size, env_h * scale + y_offset))
 
             d_explored = agents[d_agent_key].get_explored()
+            d_observed_array = agents[d_agent_key].get_observation()
+            d_obs_tensor = torch.from_numpy(d_observed_array).permute(2, 0, 1).float()
+            d_obs_tensor = (d_obs_tensor / 255.0 - 0.5) * 2.0
             d_mask = np.repeat(d_explored[np.newaxis, :, :], 3, axis=0)
             d_mask_tensor = torch.from_numpy(d_mask)
-            d_masked_env_tensor = (env_tensor * d_mask_tensor).to(device)
+            # d_masked_env_tensor = (env_tensor * d_mask_tensor).to(device) # For static environment
+            d_masked_env_tensor = (d_obs_tensor * d_mask_tensor).to(device)
 
             with torch.no_grad():
                 d_predicted_tensor = model(d_masked_env_tensor.unsqueeze(0))
             d_predicted_tensor = d_predicted_tensor.cpu().squeeze()
 
-            d_comp_tensor = env_tensor * d_mask_tensor + d_predicted_tensor * (1 - d_mask_tensor)
+            d_comp_tensor = d_obs_tensor * d_mask_tensor + d_predicted_tensor * (1 - d_mask_tensor)
             d_comp_array = d_comp_tensor.numpy()
             d_comp_array = np.transpose(d_comp_array, (1, 2, 0))
             d_comp_array = ((d_comp_array + 1.0) / 2.0)
@@ -322,10 +336,9 @@ def main():
         if step % 10 == 0:
             comp_copy = comp_tensor.cpu().numpy().copy()
             env_copy = env_tensor.cpu().numpy().copy()
-            mask_copy = mask_tensor.cpu().numpy().copy()
 
-            PSNR_val = cal_PSNR(comp_copy, env_copy, mask_copy[0])
-            SSIM_val = cal_SSIM(comp_copy, env_copy, mask_copy[0])
+            PSNR_val = cal_PSNR(comp_copy, env_copy)
+            SSIM_val = cal_SSIM(comp_copy, env_copy)
 
             with open(csv_path, "a", newline="") as f:
                 writer = csv.writer(f)
