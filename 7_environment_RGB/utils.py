@@ -1,3 +1,6 @@
+import glob
+import random
+import os
 import pygame
 import numpy as np
 import pandas as pd
@@ -6,6 +9,11 @@ import matplotlib.pyplot as plt
 
 from PIL import Image
 from skimage.metrics import structural_similarity as SSIM
+
+def random_environment(env_img_path, sample):
+    imgs_in_folder = sorted(glob.glob(os.path.join(env_img_path, "**", "*.png"), recursive=True))
+    print(f"Found {len(imgs_in_folder)} images in '{env_img_path}'")
+    return random.sample(imgs_in_folder, sample)
 
 # Scales image according to provided 'img_scaled_dim'
 class ImageResize:

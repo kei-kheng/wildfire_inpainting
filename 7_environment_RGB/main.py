@@ -12,6 +12,7 @@ import itertools # For distance measurement between agents
 from models import ContextEncoder
 from agent import Agent
 from utils import (
+    random_environment,
     convert_img_to_, 
     nparray_to_surface,
     cal_PSNR,
@@ -21,8 +22,6 @@ from utils import (
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--env_img_path_1", type=str, default="env_imgs/6_050.png")
-    parser.add_argument("--env_img_path_2", type=str, default="env_imgs/23_040.png")
     parser.add_argument("--img_scaled_dim", type=int, default=320)
     parser.add_argument("--model_path", type=str, default="models/test8/generator.pth")
     parser.add_argument("--no_of_agents", type=int, default=20)
@@ -39,6 +38,8 @@ def main():
     parser.add_argument("--output_dir", type=str, default="test")
     args = parser.parse_args()
 
+    env_img_1_path, env_img_2_path = random_environment("env_imgs", sample=2)
+
     os.makedirs(f"results/{args.output_dir}", exist_ok=True)
     # Option to log communication
     if args.log_comm:
@@ -50,6 +51,8 @@ def main():
     # Log simulation conditions
     sim_log_path = f"results/{args.output_dir}/simulation_conditions.txt"
     with open(sim_log_path, "w") as f:
+        f.write(f"Initial environment: {env_img_1_path}\n")
+        f.write(f"Switched environment: {env_img_2_path}\n")
         for arg_key, arg_value in vars(args).items():
             f.write(f"--{arg_key} {arg_value}\n")
     print(f"Wrote simulation conditions to: {sim_log_path}")
@@ -80,22 +83,15 @@ def main():
     model.eval()
     print(f"Loaded inference model from '{args.model_path}'")
 
-    # Convert environment image to NumPy array with shape (H, W, 3)
-    random_angle = random.choice((0, 90, 180, 270))
-    env_array = convert_img_to_(args.env_img_path_1, args.img_scaled_dim, output="nparray", rotation=random_angle)
+    # Convert environment image to NumPy array with shape (H, W, 3), random rotation applied
+    random_angle_1 = random.choice((0, 90, 180, 270))
+    random_angle_2 = random.choice((0, 90, 180, 270))
+    env_array = convert_img_to_(env_img_1_path, args.img_scaled_dim, output="nparray", rotation=random_angle_1)
     env_surface = nparray_to_surface(env_array, scale)
     # Convert to tensor and normalize
-    env_tensor = convert_img_to_(args.env_img_path_1, args.img_scaled_dim, output="tensor", rotation=random_angle)
+    env_tensor = convert_img_to_(env_img_1_path, args.img_scaled_dim, output="tensor", rotation=random_angle_1)
     env_h, env_w, env_c = env_array.shape
     # print(f"Environment shape (H, W, C): {env_array.shape}")
-
-    '''
-    # Code snippet before communication between agents was implemented
-    # Initialize maps shared by the agents
-    observed_map = np.zeros((env_h, env_w, env_c), dtype=np.float32)  # RGB
-    # Channel number omitted, binary map
-    explored_map = np.zeros((env_h, env_w), dtype=np.float32)  # Grayscale
-    '''
 
     # Instantiate agents at runtime: agent_1, agent_2...
     # Each agent accesses and updates their own maps only
@@ -153,9 +149,9 @@ def main():
         # 1st column - Ground Truth
         # Change environment at half the simulation time
         if (step == args.steps // 2):
-            env_array = convert_img_to_(args.env_img_path_2, args.img_scaled_dim, output="nparray", rotation=random_angle)
+            env_array = convert_img_to_(env_img_2_path, args.img_scaled_dim, output="nparray", rotation=random_angle_2)
             env_surface = nparray_to_surface(env_array, scale)
-            env_tensor = convert_img_to_(args.env_img_path_2, args.img_scaled_dim, output="tensor", rotation=random_angle)
+            env_tensor = convert_img_to_(env_img_2_path, args.img_scaled_dim, output="tensor", rotation=random_angle_2)
             print("Environment changed!")
 
         text_surface = window_font.render("Ground Truth", False, (0, 0, 0))
@@ -173,7 +169,7 @@ def main():
         obs_surface = nparray_to_surface(obs_array, scale)
         # (H, W, C) to (C, H, W), use permute() for tensors and transpose() for NumPy arrays
         obs_tensor = torch.from_numpy(obs_array).permute(2, 0, 1).float()
-        # Normalize to [-1.0, 1.0]
+        # Normalize to [-1.0, 1.0] from [0, 255] -> Did a thought experiment with 0 and 255
         obs_tensor = (obs_tensor / 255.0 - 0.5) * 2.0
         screen.blit(obs_surface, (window_w * (1.0 / 4.0), y_offset))
 
@@ -266,7 +262,7 @@ def main():
         
         mask_3ch = np.repeat(exp_array[np.newaxis, :, :], 3, axis=0)  # Derive a 3-channeled mask from 'exp_array'
         mask_tensor = torch.from_numpy(mask_3ch)  # Convert to tensor, shape -> (C, H, W)
-        # masked_env_tensor = (env_tensor * mask_tensor).to(device)  # Masked environment for static case
+        # masked_env_tensor = (env_tensor * mask_tensor).to(device)  # For static environment
         masked_env_tensor = (obs_tensor * mask_tensor).to(device)
 
         with torch.no_grad():
