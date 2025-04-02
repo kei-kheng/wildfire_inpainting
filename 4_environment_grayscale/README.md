@@ -8,7 +8,7 @@ The observation is input into a trained model. Visualisation is done using Pygam
 ```
 --env_img           Path to image to be loaded as environment, default: images/default.png
 --img_size          Size of image in pixels, default: 128x128 (width X height)
---model_path        Path to load trained odel from, default: models/denoising_autoencoder_grayscale.pth
+--model_path        Path to load trained model from, default: models/denoising_autoencoder_grayscale.pth
 --no_of_agents      Number of agents to be instantiated in the environment, default: 1
 --agent_patch_size  Size of patch observable by agent, default: 9
 --steps             Simulation time in ticks, default: 1000
