@@ -9,19 +9,8 @@ Lossy image --> Denoising autoencoder --> Inpainting GAN --> Reconstructed, deno
 - [2D Shape Generator](https://github.com/TimoFlesch/2D-Shape-Generator)
 - [PartialConv2d](https://github.com/NVIDIA/partialconv)
 
-# To-do [Logbook - 10 March 2025]
-*Model & Dataset*
-- [ ] Improve model to generalize better: expand dataset, train for more epochs, modify architecture to use **partial convolution**, introduce **different masks/noises**.
-- [X] Data augmentation: rotation, random number of square masks with varying sizes.
+# Possible Improvements
+- Improve model to generalize better: modify architecture to use **partial convolution**, introduce **different masks/noises**.
 
-*Environment & Agent*
-- [X] RGB environment
-- [ ] List down assumptions: agents' observation patch, information decay rate and **communication** range.
-
-*Performance*
-- [X] Evaluation metrics, e.g., SSIM, PNSR.
-- [ ] Investigate adaptability of model in a dynamic environment.
-
+# To-do
 - [ ] Upload zipped folders of dataset to GitHub
-
-**Check logbook for saved links that might be useful!**
