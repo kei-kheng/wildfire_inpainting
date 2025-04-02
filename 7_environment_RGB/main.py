@@ -20,14 +20,19 @@ from utils import (
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--env_img_path", type=str, default="env_imgs/test.png")
+    parser.add_argument("--env_img_path_1", type=str, default="env_imgs/6_050.png")
+    parser.add_argument("--env_img_path_2", type=str, default="env_imgs/23_040.png")
     parser.add_argument("--img_scaled_dim", type=int, default=320)
     parser.add_argument("--model_path", type=str, default="models/test8/generator.pth")
-    parser.add_argument("--no_of_agents", type=int, default=5)
-    parser.add_argument("--agent_patch_size", type=int, default=9)
-    parser.add_argument("--agent_comm_range", type=int, default=9)
-    parser.add_argument("--agent_confidence_decay", type=float, default=0.02)
-    parser.add_argument("--agent_confidence_threshold", type=float, default=0.3)
+    parser.add_argument("--no_of_agents", type=int, default=20)
+    # -------------------- Depends on hardware --------------------
+    parser.add_argument("--agent_patch_size", type=int, default=25)
+    parser.add_argument("--agent_comm_range", type=int, default=30)
+    parser.add_argument("--max_payload_size", type=int, default=270)
+    # -------------------------------------------------------------
+    parser.add_argument("--agent_confidence_reception", type=float, default=0.6)
+    parser.add_argument("--agent_confidence_decay", type=float, default=0.001)
+    parser.add_argument("--agent_confidence_threshold", type=float, default=0.15)
     parser.add_argument("--log_comm", action="store_true")
     parser.add_argument("--steps", type=int, default=10000)
     parser.add_argument("--output_dir", type=str, default="test")
@@ -52,13 +57,19 @@ def main():
     csv_path = f"results/{args.output_dir}/evaluation_log.csv"
     with open(csv_path, "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["Step", "PSNR", "SSIM"])
+        writer.writerow(["Step", "PSNR", "SSIM", "Percentage Explored"])
 
+    # Variables for Pygame window
     scale = 2
     col = 4
-    random_angle = random.choice((0, 90, 180, 270))
-    # Decide which agent's maps to display
-    displayed_agent = 1
+    x_offset = 5.0
+    y_offset = 40.0
+    legend_size = 15
+
+    # For communication between agents
+    bytes_per_pixel = 3  # RGB, uint8
+    max_pixels = args.max_payload_size // bytes_per_pixel
+    print(f"Agents could transmit up to {max_pixels} pixels")
 
     # Load model
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -69,10 +80,11 @@ def main():
     print(f"Loaded inference model from '{args.model_path}'")
 
     # Convert environment image to NumPy array with shape (H, W, 3)
-    env_array = convert_img_to_(args.env_img_path, args.img_scaled_dim, output="nparray", rotation=random_angle)
+    random_angle = random.choice((0, 90, 180, 270))
+    env_array = convert_img_to_(args.env_img_path_1, args.img_scaled_dim, output="nparray", rotation=random_angle)
     env_surface = nparray_to_surface(env_array, scale)
     # Convert to tensor and normalize
-    env_tensor = convert_img_to_(args.env_img_path, args.img_scaled_dim, output="tensor", rotation=random_angle)
+    env_tensor = convert_img_to_(args.env_img_path_1, args.img_scaled_dim, output="tensor", rotation=random_angle)
     env_h, env_w, env_c = env_array.shape
     # print(f"Environment shape (H, W, C): {env_array.shape}")
 
@@ -107,18 +119,27 @@ def main():
             confidence_decay=args.agent_confidence_decay,
             confidence_threshold=args.agent_confidence_threshold
         )
+    
+    # Choose 4 agents besides agent_1 randomly whose maps are to be displayed
+    agent_keys = list(agents.keys())
+    agent_keys.remove("agent_1")
+    displayed_agents_list = random.sample(agent_keys, 4)
+    displayed_agents_dict = {}
+    agent_colour = [(0, 255, 0), (0, 255, 255), (0, 0, 255), (255, 0, 255)]
+    for agent, colour in zip(displayed_agents_list, agent_colour):
+        displayed_agents_dict[agent] = colour
 
     pygame.init()
     # Screen setup and clock initialisation
     window_w = env_w * scale * col
-    window_h = (env_h + 40) * scale
+    window_h = (2 * env_h + y_offset) * scale
     window_font = pygame.font.SysFont("Comic Sans MS", 24)
     screen = pygame.display.set_mode((window_w, window_h))
     clock = pygame.time.Clock()
 
     for step in range(args.steps):
         pygame.display.set_caption("Multi-agent Exploration, t = {}".format(step))
-        clock.tick(60)  # Limit FPS to 60
+        clock.tick(120)  # Limit FPS
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -129,18 +150,32 @@ def main():
         screen.fill((255, 255, 255))
 
         # 1st column - Ground Truth
+        # Change environment at half the simulation time
+        if (step == args.steps // 2):
+            env_array = convert_img_to_(args.env_img_path_2, args.img_scaled_dim, output="nparray", rotation=random_angle)
+            env_surface = nparray_to_surface(env_array, scale)
+            env_tensor = convert_img_to_(args.env_img_path_2, args.img_scaled_dim, output="tensor", rotation=random_angle)
+
         text_surface = window_font.render("Ground Truth", False, (0, 0, 0))
-        screen.blit(text_surface, (0, 0))
-        screen.blit(env_surface, (0, 40))
+        screen.blit(text_surface, (x_offset, 0))
+        screen.blit(env_surface, (0, y_offset))
 
         # 2nd column - Observation
-        text_surface = window_font.render("Agents' Observation", False, (0, 0, 0))
-        screen.blit(text_surface, (window_w * (1.0 / 4.0), 0))
-
-        # Update agents' observation and perform random walk
+        # Update agents' observation, perform random walk, populate payload and update confidence
         for i in range(1, args.no_of_agents + 1):
-            agents[f"agent_{i}"].update_confidence()
             agents[f"agent_{i}"].measure(env_array)
+            agents[f"agent_{i}"].populate_payload(max_pixels)
+            agents[f"agent_{i}"].update_confidence()
+        
+        obs_array = agents["agent_1"].get_observation()
+        obs_surface = nparray_to_surface(obs_array, scale)
+        screen.blit(obs_surface, (window_w * (1.0 / 4.0), y_offset))
+
+        explored_map = agents["agent_1"].get_explored()
+        percentage_explored = np.sum(explored_map) / explored_map.size * 100
+
+        text_surface = window_font.render(f"Agent 1's Observation ({percentage_explored:.2f}%)", False, (0, 0, 0))
+        screen.blit(text_surface, (window_w * (1.0 / 4.0) + x_offset, 0))
 
         # Measure Pythagorean distance and update maps if close enough
         agent_names = list(agents.keys())
@@ -161,7 +196,19 @@ def main():
 
             # If close enough, exchange information
             if distance <= args.agent_comm_range:
-                agent_i.communicate_with(agent_j)
+                agent_i.communicate_with(agent_j, confidence_reception=args.agent_confidence_reception)
+
+                # Draw white line between communicating agents
+                y1, x1 = agent_i.get_position()
+                y2, x2 = agent_j.get_position()
+                pygame.draw.line(
+                    screen,
+                    (255, 255, 255),
+                    (x1 * scale + window_w * (1.0 / 4.0), y1 * scale + 30),
+                    (x2 * scale + window_w * (1.0 / 4.0), y2 * scale + 30),
+                    1
+                )
+
                 if args.log_comm:
                     with open(comm_log_path, "a", newline="") as f:
                         writer = csv.writer(f)
@@ -170,26 +217,35 @@ def main():
                             step, i, agent_i.get_position(), j, agent_j.get_position()
                         ])
 
-        obs_array = agents[f"agent_{displayed_agent}"].get_observation()
-        obs_surface = nparray_to_surface(obs_array, scale)
-        screen.blit(obs_surface, (window_w * (1.0 / 4.0), 40))
-
-        # Draw agent
         for i in range(1, args.no_of_agents + 1):
-            agents[f"agent_{i}"].draw(screen, scale, window_w * (1.0 / 4.0))
+            agent_key = f"agent_{i}"
+            if agent_key == "agent_1":
+                colour = (255, 165, 0)
+            elif agent_key in displayed_agents_dict:
+                colour = displayed_agents_dict[agent_key]
+            else:
+                colour = (255, 0, 0)
+            agents[agent_key].draw(screen, scale, window_w * (1.0 / 4.0), colour)
 
-        # 3rd column - Explored Region
-        text_surface = window_font.render("Explored Region", False, (0, 0, 0))
-        screen.blit(text_surface, (window_w * (2.0 / 4.0), 0))
+        # 3rd column - Explored Area
+        text_surface = window_font.render("Agent 1's Explored Area", False, (0, 0, 0))
+        screen.blit(text_surface, (window_w * (2.0 / 4.0) + x_offset, 0))
 
-        exp_array = agents[f"agent_{displayed_agent}"].get_explored()
+        exp_array = agents["agent_1"].get_explored()
         # Multiplication by 255 to convert [0, 1] to [0, 255] -> Pygame's expected input format
         exp_surface = nparray_to_surface(exp_array * 255.0, scale, grayscale=True)
-        screen.blit(exp_surface, (window_w * (2.0 / 4.0), 40))
+        screen.blit(exp_surface, (window_w * (2.0 / 4.0), y_offset))
 
         # 4th column - Prediction
-        text_surface = window_font.render("Prediction", False, (0, 0, 0))
-        screen.blit(text_surface, (window_w * (3.0 / 4.0), 0))
+        # Legend
+        pygame.draw.rect(screen, (255, 165, 0), pygame.Rect(
+                window_w * (3.0 / 4.0) + x_offset,
+                10.0,
+                legend_size, legend_size
+            )
+        )
+        text_surface = window_font.render("Agent 1's Prediction", False, (0, 0, 0))
+        screen.blit(text_surface, (window_w * (3.0 / 4.0) + 2 * x_offset + legend_size, 0))
 
         '''
         # -> Passing observed_tensor as the model's input would give weird-coloured outputs -> Took 3 days to figure this out!
@@ -232,7 +288,35 @@ def main():
         # Convert [-1, 1] to [0, 1] range
         comp_array = ((comp_array + 1.0) / 2.0)
         comp_surface = nparray_to_surface(comp_array * 255.0, scale)
-        screen.blit(comp_surface, (window_w * (3.0 / 4.0), 40))
+        screen.blit(comp_surface, (window_w * (3.0 / 4.0), y_offset))
+
+        # 2nd row - Display observation of agents in displayed_agents_list
+        for idx, d_agent_key in enumerate(displayed_agents_list):
+            pygame.draw.rect(screen, displayed_agents_dict[d_agent_key], pygame.Rect(
+                window_w * (idx / 4.0) + x_offset,
+                env_h * scale + y_offset + 10.0,
+                legend_size, legend_size
+                )
+            )
+
+            text_surface = window_font.render(f"Prediction ({d_agent_key})", False, (0, 0, 0))
+            screen.blit(text_surface, (window_w * (idx / 4.0) + 2 * x_offset + legend_size, env_h * scale + y_offset))
+
+            d_explored = agents[d_agent_key].get_explored()
+            d_mask = np.repeat(d_explored[np.newaxis, :, :], 3, axis=0)
+            d_mask_tensor = torch.from_numpy(d_mask)
+            d_masked_env_tensor = (env_tensor * d_mask_tensor).to(device)
+
+            with torch.no_grad():
+                d_predicted_tensor = model(d_masked_env_tensor.unsqueeze(0))
+            d_predicted_tensor = d_predicted_tensor.cpu().squeeze()
+
+            d_comp_tensor = env_tensor * d_mask_tensor + d_predicted_tensor * (1 - d_mask_tensor)
+            d_comp_array = d_comp_tensor.numpy()
+            d_comp_array = np.transpose(d_comp_array, (1, 2, 0))
+            d_comp_array = ((d_comp_array + 1.0) / 2.0)
+            d_comp_surface = nparray_to_surface(d_comp_array * 255.0, scale)
+            screen.blit(d_comp_surface, (window_w * (idx / 4.0), env_h * scale + 2 * y_offset))    
 
         # Calculate PSNR and SSIM, write to CSV
         if step % 10 == 0:
@@ -245,11 +329,12 @@ def main():
 
             with open(csv_path, "a", newline="") as f:
                 writer = csv.writer(f)
-                # Step / PNSR / SSIM
+                # Step / PNSR / SSIM / Percentage Explored
                 writer.writerow([
                     step, 
                     f"{PSNR_val:.4f}", 
-                    f"{SSIM_val:.4f}"
+                    f"{SSIM_val:.4f}",
+                    f"{percentage_explored:.2f}"
                 ])
             
         if step % 100 == 0:
@@ -262,7 +347,7 @@ def main():
 
     pygame.quit()
 
-    plot_from_csv(args.output_dir)
+    plot_from_csv(args.output_dir, csv_file="evaluation_log.csv")
     print("Plotted graphs from CSV")
 
 if __name__ == "__main__":

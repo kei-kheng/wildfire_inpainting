@@ -12,7 +12,6 @@ Agent's attributes:
 - Explored region
 """
 
-
 class Agent:
     def __init__(self, position, env_size, patch_size, comm_range, observed, explored, confidence, confidence_decay, confidence_threshold):
         self.position = position
@@ -20,6 +19,7 @@ class Agent:
         self.env_h = env_size[1]
         self.patch_size = patch_size
         self.comm_range = comm_range
+        self.payload = None
         self.agent_size = 10
 
         # Maps storing information of what the agents have seen and regions they have explored
@@ -32,12 +32,12 @@ class Agent:
         self.confidence_threshold = confidence_threshold
 
         # Default: Move to the right
-        self.dy, self.dx = 0, 3
+        self.dy, self.dx = 0, 5
 
     # Change moving direction with 30% probability
     def random_walk(self):
         if random.random() < 0.7:
-            dirs = [(3, 0), (-3, 0), (0, 3), (0, -3)]
+            dirs = [(5, 0), (-5, 0), (0, 5), (0, -5)]
             self.dy, self.dx = random.choice(dirs)
 
         pos_x, pos_y = self.position
@@ -73,38 +73,53 @@ class Agent:
         # Agents are very confident with newly observed areas
         self.confidence[x0 : x1 + 1, y0 : y1 + 1] = 1.0
         self.random_walk()
+
+    # Calculates payload based on restriction on payload size in bytes, prioritizing regions with higher confidence
+    # Transmission of each pixel costs at least 3 bytes -> uint8 data for 3 channels (RGB)
+    def populate_payload(self, max_pixels):
+        # When transmissible payload is restricted, prioritize pixels with higher confidence
+        # Convert 2D (H, W) into 1D H * W for sorting
+        flat_confidence = self.confidence.flatten()
+        # Sort in ascending order, get entries at the back, '-max_pixels'
+        high_confidence_indices = np.argsort(flat_confidence)[-max_pixels:]
+
+        # unravel_index -> Converts indices in a flattened array back to its unflattened version
+        # Reference: https://stackoverflow.com/questions/48135736/what-is-an-intuitive-explanation-of-np-unravel-index
+        h_indices, w_indices = np.unravel_index(high_confidence_indices, self.confidence.shape)
+
+        observed_payload = self.observed[h_indices, w_indices]
+
+        # print(f"h_indices = {h_indices}")
+        # print(f"observed_payload = {observed_payload}")
+
+        # Package containinng list of coordinate pairs ('explored') and the corresponding RGB values
+        self.payload = {
+            "positions": list(zip(h_indices, w_indices)),
+            "observed": observed_payload,
+        }
     
     @staticmethod
     # Does not depend on any instance attributes
-    def average_obs(obs_1, exp_1, obs_2, exp_2):
-        # Calculate weighted sum of obs uisng exp as weights
-        weighted_obs = obs_1 * exp_1 + obs_2 * exp_2
-        sum_exp = exp_1 + exp_2
-        # Temporarily set unexplored regions 0 -> 1 to avoid division by 0 error
-        # Positions where sum_exp > 0 are explored regions
-        sum_exp[sum_exp == 0] = 1
-        averaged_obs = weighted_obs / sum_exp
-        return averaged_obs
+    def combine_observation(self_obs, incoming_obs):
+        if np.all(self_obs == 0.0):
+            # If RGB pixel is [0.0, 0.0, 0.0]
+            return incoming_obs
+        else:
+            # For regions that both agents have explored, calculate average
+            return (self_obs + incoming_obs) / 2.0
 
-    def communicate_with(self, other_agent):
-        obs_self = self.get_observation()
-        obs_other = other_agent.get_observation()
-        exp_self = self.get_explored()
-        exp_other = other_agent.get_explored()
+    def communicate_with(self, other_agent, confidence_reception):
+        received_payload = other_agent.payload
+        if received_payload is None:
+            return
 
-        # Add channel axis at end (H, W, 1) for broadcast-multiplication between exp and obs
-        # wca = with channel axis
-        exp_self_wca = exp_self[..., None]
-        exp_other_wca = exp_other[..., None]
-
-        averaged_obs = Agent.average_obs(obs_self, exp_self_wca, obs_other, exp_other_wca)
-        combined_exp = np.logical_or(exp_self, exp_other).astype(np.float32)
-
-        # Update both agents, .copy() to avoid accidental shared memory
-        self.set_observation(averaged_obs.copy())
-        other_agent.set_observation(averaged_obs.copy())
-        self.set_explored(combined_exp.copy())
-        other_agent.set_explored(combined_exp.copy())
+        for (h, w), obs_pixel in zip(received_payload["positions"], received_payload["observed"]):
+            # print(f"({h}, {w}) → {obs_pixel}")
+            self.observed[h, w] = Agent.combine_observation(self.observed[h, w], obs_pixel)
+            # Combine explored flags
+            self.explored[h, w] = 1.0
+            # Assign default confidence to received data
+            self.confidence[h, w] = confidence_reception
 
     '''
     Confidence Mechanism
@@ -132,17 +147,29 @@ class Agent:
     def get_explored(self):
         return self.explored
     
+    def get_confidence(self):
+        return self.confidence
+    
+    def get_payload(self):
+        return self.payload
+    
     def set_observation(self, observed):
         self.observed = observed
 
     def set_explored(self, explored):
         self.explored = explored
+    
+    def set_confidence(self, confidence):
+        self.confidence = confidence
+
+    def set_payload(self, payload):
+        self.payload = payload
 
     # Draw agent, x_offset is provided for the agents to be drawn in the right column of the window
-    def draw(self, screen, scale, x_offset):
+    def draw(self, screen, scale, x_offset, agent_colour):
         pygame.draw.rect(
             screen,
-            (255, 0, 0),
+            agent_colour,
             (
                 self.position[1] * scale + x_offset,
                 self.position[0] * scale + 30,

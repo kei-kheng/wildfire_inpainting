@@ -119,4 +119,14 @@ def plot_from_csv(output_dir, csv_file="log.csv"):
     plt.grid(True)
     plt.savefig(f"results/{output_dir}/SSIM_vs_step.png", dpi=300)
     plt.show()
+
+    # Percentage Explored
+    plt.figure(figsize=(8,5))
+    plt.plot(df["Step"], df["Percentage Explored"], label="Percentage Explored", color="purple")
+    plt.xlabel("Step")
+    plt.ylabel("Percentage Explored (%)")
+    plt.title("Percentage explored over steps")
+    plt.grid(True)
+    plt.savefig(f"results/{output_dir}/percentage_explored_vs_step.png", dpi=300)
+    plt.show()
     return
