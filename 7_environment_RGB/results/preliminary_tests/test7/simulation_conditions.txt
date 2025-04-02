@@ -1,3 +1,5 @@
+Initial environment: env_imgs\29\29_098.png
+Switched environment: env_imgs\16\16_030.png
 --env_img_path_1 env_imgs/6_050.png
 --env_img_path_2 env_imgs/23_040.png
 --img_scaled_dim 320
