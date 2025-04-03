@@ -1,5 +1,5 @@
-Initial environment: env_imgs\1\1_100.png
-Switched environment: env_imgs\18\18_100.png
+Initial environment: env_imgs\2\2_020.png
+Switched environment: env_imgs\32\32_020.png
 --img_scaled_dim 320
 --model_path models/test8/generator.pth
 --no_of_agents 20

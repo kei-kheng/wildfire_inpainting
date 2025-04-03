@@ -34,7 +34,6 @@ def main():
     parser.add_argument("--agent_confidence_reception", type=float, default=0.6)
     parser.add_argument("--agent_confidence_decay", type=float, default=0.001)
     parser.add_argument("--agent_confidence_threshold", type=float, default=0.15)
-    parser.add_argument("--agent_policy", type=str, default="random")
     parser.add_argument("--log_comm", action="store_true")
     parser.add_argument("--steps", type=int, default=10000)
     parser.add_argument("--output_dir", type=str, default="test")
@@ -116,8 +115,7 @@ def main():
             explored=explored_map,
             confidence=confidence_matrix,
             confidence_decay=args.agent_confidence_decay,
-            confidence_threshold=args.agent_confidence_threshold,
-            policy=args.agent_policy
+            confidence_threshold=args.agent_confidence_threshold
         )
     
     # Choose 4 agents besides agent_1 randomly whose maps are to be displayed
