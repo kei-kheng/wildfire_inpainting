@@ -6,9 +6,13 @@ SPEED = 5
 DIRECTIONS = [(-1, 0), (1, 0), (0, -1), (0, 1),
               (-1, -1), (-1, 1), (1, -1), (1, 1)]
 AGENT_SIZE = 10
+# For confidence-based walk
+LOOKAHEAD_DISTANCE = 15
+SAMPLE_RADIUS = 5
+OFFSET = 15
 
 class Agent:
-    def __init__(self, position, env_size, patch_size, comm_range, observed, explored, confidence, confidence_decay, confidence_threshold):
+    def __init__(self, position, env_size, patch_size, comm_range, observed, explored, confidence, confidence_decay, confidence_threshold, policy):
         self.position = position
         self.env_w = env_size[0]
         self.env_h = env_size[1]
@@ -25,6 +29,16 @@ class Agent:
         self.confidence_decay = confidence_decay
         self.confidence_threshold = confidence_threshold
 
+        self.policy = policy
+
+        if self.policy == "confidence":
+            self.sample_targets = [
+                (SAMPLE_RADIUS + OFFSET, SAMPLE_RADIUS + OFFSET),
+                (self.env_w - SAMPLE_RADIUS - OFFSET, self.env_h - SAMPLE_RADIUS - OFFSET),
+                (SAMPLE_RADIUS+ OFFSET, self.env_h - SAMPLE_RADIUS - OFFSET),
+                (self.env_w - SAMPLE_RADIUS - OFFSET, SAMPLE_RADIUS + OFFSET),
+            ]
+
         # Default: Move to the right
         self.dy, self.dx = 0, SPEED
 
@@ -38,6 +52,63 @@ class Agent:
         pos_y += self.dy * SPEED
 
         # Clamp to ensure valid indices
+        pos_x = max(AGENT_SIZE // 2, min(self.env_w - 1 - AGENT_SIZE // 2, pos_x))
+        pos_y = max(AGENT_SIZE // 2, min(self.env_h - 1 - AGENT_SIZE // 2, pos_y))
+        self.position = (pos_x, pos_y)
+
+    # Confidence-based walk policy
+    # Implementation 1
+    '''
+    # Sample a patch in each direction, patch with lowest average confidence defines best direction
+    def confidence_based_walk(self):        
+        pos_x, pos_y = self.position
+        best_dir = random.choice(DIRECTIONS)
+        lowest_conf = float("inf")
+
+        for dx, dy in DIRECTIONS:
+            # Center of patches that we sample in each direction
+            nx, ny = pos_x + dx * LOOKAHEAD_DISTANCE, pos_y + dy * LOOKAHEAD_DISTANCE
+            # If out of bounds, skip this direction
+            if not ((0 <= nx < self.env_w) and 0 <= (ny < self.env_h)):
+                continue
+
+            # Ensure valid indices when extracting confidence patch, (H, W) NumPy array, +1 for correct array indexing
+            patch = self.confidence[
+                max(dx - SAMPLE_RADIUS, 0):min(dx + SAMPLE_RADIUS + 1, self.env_w),
+                max(dy - SAMPLE_RADIUS, 0):min(dy + SAMPLE_RADIUS + 1, self.env_h)
+            ]
+            mean_conf = np.mean(patch)
+            if mean_conf <= lowest_conf:
+                lowest_conf = mean_conf
+                best_dir = (dx, dy)
+
+        pos_x += best_dir[0] * SPEED
+        pos_y += best_dir[1] * SPEED
+        pos_x = max(AGENT_SIZE // 2, min(self.env_w - 1 - AGENT_SIZE // 2, pos_x))
+        pos_y = max(AGENT_SIZE // 2, min(self.env_h - 1 - AGENT_SIZE // 2, pos_y))
+        self.position = (pos_x, pos_y)
+    '''
+
+    # Implementation 2
+    def confidence_based_walk(self):        
+        pos_x, pos_y = self.position
+        best_target = None
+        lowest_conf = float("inf")
+
+        for tx, ty in self.sample_targets:
+            patch = self.confidence[
+                max(tx - SAMPLE_RADIUS, 0):min(tx + SAMPLE_RADIUS + 1, self.env_w),
+                max(ty - SAMPLE_RADIUS, 0):min(ty + SAMPLE_RADIUS + 1, self.env_h)
+            ]
+            mean_conf = np.mean(patch)
+            if mean_conf <= lowest_conf:
+                lowest_conf = mean_conf
+                best_target = (tx, ty)
+        
+        self.dx = np.sign(best_target[0] - pos_x)
+        self.dy = np.sign(best_target[1] - pos_y)
+        pos_x += self.dx * SPEED
+        pos_y += self.dy * SPEED
         pos_x = max(AGENT_SIZE // 2, min(self.env_w - 1 - AGENT_SIZE // 2, pos_x))
         pos_y = max(AGENT_SIZE // 2, min(self.env_h - 1 - AGENT_SIZE // 2, pos_y))
         self.position = (pos_x, pos_y)
@@ -61,7 +132,10 @@ class Agent:
         self.explored[x0 : x1 + 1, y0 : y1 + 1] = 1.0
         # Agents are very confident with newly observed areas
         self.confidence[x0 : x1 + 1, y0 : y1 + 1] = 1.0
-        self.random_walk()
+        if self.policy == "random":
+            self.random_walk()
+        elif self.policy =="confidence":
+            self.confidence_based_walk()
 
     # Calculates payload based on restriction on payload size in bytes, prioritizing regions with higher confidence
     # Transmission of each pixel costs at least 3 bytes -> uint8 data for 3 channels (RGB)
