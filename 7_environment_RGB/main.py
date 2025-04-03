@@ -15,6 +15,7 @@ from utils import (
     random_environment,
     convert_img_to_, 
     nparray_to_surface,
+    cal_MSE,
     cal_PSNR,
     cal_SSIM,
     plot_from_csv
@@ -61,7 +62,7 @@ def main():
     csv_path = f"results/{args.output_dir}/evaluation_log.csv"
     with open(csv_path, "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["Step", "PSNR", "SSIM", "Percentage Explored"])
+        writer.writerow(["Step", "MSE", "PSNR", "SSIM", "Percentage Explored"])
 
     # Variables for Pygame window
     scale = 2
@@ -333,14 +334,16 @@ def main():
             comp_copy = comp_tensor.cpu().numpy().copy()
             env_copy = env_tensor.cpu().numpy().copy()
 
+            MSE_val = cal_MSE(comp_copy, env_copy)
             PSNR_val = cal_PSNR(comp_copy, env_copy)
             SSIM_val = cal_SSIM(comp_copy, env_copy)
 
             with open(csv_path, "a", newline="") as f:
                 writer = csv.writer(f)
-                # Step / PNSR / SSIM / Percentage Explored
+                # Step / MSE / PNSR / SSIM / Percentage Explored
                 writer.writerow([
                     step, 
+                    f"{MSE_val:.4f}",
                     f"{PSNR_val:.4f}", 
                     f"{SSIM_val:.4f}",
                     f"{percentage_explored:.2f}"

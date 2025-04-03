@@ -64,11 +64,15 @@ def nparray_to_surface(nparray, scale, grayscale=False):
     surface = pygame.surfarray.make_surface(np.transpose(array_scaled, (1, 0, 2)))
     return surface
 
-def cal_PSNR(composite_image, ground_truth):
-    data_range = ground_truth.max() - ground_truth.min()
+def cal_MSE(composite_image, ground_truth):
     MSE = np.mean((composite_image - ground_truth)**2)
     if MSE < 1e-10:
         return 100.0
+    return MSE
+
+def cal_PSNR(composite_image, ground_truth):
+    data_range = ground_truth.max() - ground_truth.min()
+    MSE = cal_MSE(composite_image, ground_truth)
     PSNR = 10 * np.log10((data_range)**2 / MSE)
     return PSNR
 
@@ -80,6 +84,16 @@ def cal_SSIM(composite_image, ground_truth, win_size=7):
 def plot_from_csv(output_dir, csv_file="log.csv"):
     csv_path = f"results/{output_dir}/{csv_file}"
     df = pd.read_csv(csv_path)
+
+    # MSE
+    plt.figure(figsize=(8,5))
+    plt.plot(df["Step"], df["MSE"], color='orange', label="MSE")
+    plt.xlabel("Step")
+    plt.ylabel("MSE")
+    plt.title("MSE over steps")
+    plt.grid(True)
+    plt.savefig(f"results/{output_dir}/MSE_vs_step.png", dpi=300)
+    plt.show()
 
     # PSNR
     plt.figure(figsize=(8,5))
