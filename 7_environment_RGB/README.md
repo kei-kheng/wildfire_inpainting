@@ -5,7 +5,7 @@ This code loads two randomly chosen images from the inference dataset as the env
     - `confidence`: Models information decay for agents to adapt to dynamic environment
 and are able to communicate with agents within its communication range, exchanging information. When the size of the payload is limited, agents prioritize transmitting observation with higher confidence values. `observed` and `explored` decay at a fixed rate and information below the confidence threshold are phased out. The Pygame window displays 5 agents' prediction based on their respective observations. Screenshots of the window are captured periodically. Simulation conditions are written to a text file and the evaluation metrics are plotted against the simulation time at the end of simulation.
 
-**Evaluation metrics:** PSNR, SSIM. Calculated over **entire image** - _different from 6_inpainting_GAN_.
+**Evaluation metrics:** PSNR, SSIM. Calculated over **entire image** from the perspective of `agent_1` - _different from 6_inpainting_GAN_. 
 
 # Usage - main.py
 ## Parameters
@@ -19,6 +19,7 @@ and are able to communicate with agents within its communication range, exchangi
 --agent_confidence_reception   Confidence value assigned to received payload (want received information to stay long enough to be useful)
 --agent_confidence_decay       Rate at which confidence decays, calculated as new_confidence = old_confidence * (1 - agent_confidence_decay) at each time step
 --agent_confidence_threshold   Confidence threshold, information with confidence below this value will be phased out
+--agent_policy                 Movement policy of agent: "random" or "confidence". "confidence" drives agents towards low_confidence regions for better exploration.
 --log_comm                     Option to log communication between agents, turning this on might slow down simulation
 --steps                        Length of simulation in simulation time
 --output_dir                   Folder in which results are stored
@@ -26,7 +27,7 @@ and are able to communicate with agents within its communication range, exchangi
 
 **Example**
 ```
-python main.py --img_scaled_dim 320 --model_path models/test8/generator.pth --no_of_agents 20 --agent_patch_size 25 --agent_comm_range 30 --max_payload_size 270 --agent_confidence_reception 0.6 --agent_confidence_decay 0.001 --agent_confidence_threshold 0.15 --log_comm --steps 10000 output_dir test
+python main.py --img_scaled_dim 320 --model_path models/test8/generator.pth --no_of_agents 20 --agent_patch_size 25 --agent_comm_range 30 --max_payload_size 270 --agent_confidence_reception 0.6 --agent_confidence_decay 0.001 --agent_confidence_threshold 0.15 --agent_policy random --log_comm --steps 10000 output_dir test
 ```
 
 # Goal

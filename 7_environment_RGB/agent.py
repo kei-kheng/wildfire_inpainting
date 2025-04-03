@@ -2,25 +2,22 @@ import random
 import pygame
 import numpy as np
 
-"""
-Agent's attributes:
-- Position
-- Size of environment (Width, Height)
-- Patch size
-- Communication range
-- Observation
-- Explored region
-"""
+SPEED = 5
+DIRECTIONS = [(-1, 0), (1, 0), (0, -1), (0, 1),
+              (-1, -1), (-1, 1), (1, -1), (1, 1)]
+AGENT_SIZE = 10
+# For confidence-based walk
+LOOKAHEAD_DISTANCE = 15
+SAMPLE_RADIUS = 5
 
 class Agent:
-    def __init__(self, position, env_size, patch_size, comm_range, observed, explored, confidence, confidence_decay, confidence_threshold):
+    def __init__(self, position, env_size, patch_size, comm_range, observed, explored, confidence, confidence_decay, confidence_threshold, policy):
         self.position = position
         self.env_w = env_size[0]
         self.env_h = env_size[1]
         self.patch_size = patch_size
         self.comm_range = comm_range
         self.payload = None
-        self.agent_size = 10
 
         # Maps storing information of what the agents have seen and regions they have explored
         self.observed = observed  # 3 channels
@@ -31,27 +28,65 @@ class Agent:
         self.confidence_decay = confidence_decay
         self.confidence_threshold = confidence_threshold
 
+        # Movement policy
+        self.policy = policy
+
         # Default: Move to the right
-        self.dy, self.dx = 0, 5
+        self.dy, self.dx = 0, SPEED
 
     # Change moving direction with 30% probability
     def random_walk(self):
         if random.random() < 0.7:
-            dirs = [(5, 0), (-5, 0), (0, 5), (0, -5)]
-            self.dy, self.dx = random.choice(dirs)
+            self.dx, self.dy = random.choice(DIRECTIONS)
 
         pos_x, pos_y = self.position
-        pos_x += self.dx
-        pos_y += self.dy
+        pos_x += self.dx * SPEED
+        pos_y += self.dy * SPEED
 
         # Clamp to ensure valid indices
-        pos_x = max(
-            self.agent_size // 2, min(self.env_w - 1 - self.agent_size // 2, pos_x)
-        )
-        pos_y = max(
-            self.agent_size // 2, min(self.env_h - 1 - self.agent_size // 2, pos_y)
-        )
+        pos_x = max(AGENT_SIZE // 2, min(self.env_w - 1 - AGENT_SIZE // 2, pos_x))
+        pos_y = max(AGENT_SIZE // 2, min(self.env_h - 1 - AGENT_SIZE // 2, pos_y))
         self.position = (pos_x, pos_y)
+    
+    # Confidence-based walk policy
+    # Sample a patch in each direction, patch with lowest average confidence defines best direction
+    def confidence_based_walk(self):
+        # 50% probability to perform random walk
+        if random.random() < 0.5:
+            self.random_walk()
+            return
+        
+        pos_x, pos_y = self.position
+        best_dir = random.choice(DIRECTIONS)
+        lowest_conf = float("inf")
+
+        for dx, dy in DIRECTIONS:
+            # Center of patches that we sample in each direction
+            nx, ny = pos_x + dx * LOOKAHEAD_DISTANCE, pos_y + dy * LOOKAHEAD_DISTANCE
+            
+            # If out of bounds, skip this direction
+            if not ((0 <= nx < self.env_w) and 0 <= (ny < self.env_h)):
+                continue
+
+            # Ensure valid indices when extracting confidence patch, (H, W) NumPy array
+            # +1 for correct array indexing
+            patch = self.confidence[
+                max(ny - SAMPLE_RADIUS, 0):min(ny + SAMPLE_RADIUS + 1, self.env_h),
+                max(nx - SAMPLE_RADIUS, 0):min(nx + SAMPLE_RADIUS + 1, self.env_w)
+            ]
+
+            mean_conf = np.mean(patch)
+
+            if mean_conf <= lowest_conf:
+                lowest_conf = mean_conf
+                best_dir = (dx, dy)
+
+        pos_x += best_dir[0] * SPEED
+        pos_y += best_dir[1] * SPEED
+        pos_x = max(AGENT_SIZE // 2, min(self.env_w - 1 - AGENT_SIZE // 2, pos_x))
+        pos_y = max(AGENT_SIZE // 2, min(self.env_h - 1 - AGENT_SIZE // 2, pos_y))
+        self.position = (pos_x, pos_y)
+        # Fallback when the patches in all 8 directions are out of bounds (very unlikely)
 
     # Make an observation, update maps and perform random walk
     def measure(self, env_array):
@@ -72,7 +107,11 @@ class Agent:
         self.explored[x0 : x1 + 1, y0 : y1 + 1] = 1.0
         # Agents are very confident with newly observed areas
         self.confidence[x0 : x1 + 1, y0 : y1 + 1] = 1.0
-        self.random_walk()
+
+        if self.policy == "random":
+            self.random_walk()
+        elif self.policy =="confidence":
+            self.confidence_based_walk()
 
     # Calculates payload based on restriction on payload size in bytes, prioritizing regions with higher confidence
     # Transmission of each pixel costs at least 3 bytes -> uint8 data for 3 channels (RGB)
@@ -173,8 +212,8 @@ class Agent:
             (
                 self.position[1] * scale + x_offset,
                 self.position[0] * scale + 30,
-                self.agent_size,
-                self.agent_size,
+                AGENT_SIZE,
+                AGENT_SIZE,
             ),
         )
         pygame.draw.circle(
