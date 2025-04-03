@@ -125,7 +125,7 @@ def plot_from_csv_training(output_dir, csv_file="training_log.csv"):
     csv_path = f"results/{output_dir}/{csv_file}"
     df = pd.read_csv(csv_path)
     # Group by epoch, compute average loss per epoch
-    df_avg = df.groupby("Epoch")[["LossD", "LossG", "LossG_recon", "PSNR", "SSIM"]].mean()
+    df_avg = df.groupby("Epoch")[["LossD", "LossG", "LossG_recon", "MSE", "PSNR", "SSIM"]].mean()
 
     # Plot LossD and LossG against epoch
     plt.figure(figsize=(10, 5))
@@ -151,6 +151,17 @@ def plot_from_csv_training(output_dir, csv_file="training_log.csv"):
     plt.legend()
     plt.grid(True)
     plt.savefig(f"results/{output_dir}/lossG_recon_vs_epoch.png", dpi=300)
+    plt.show()
+
+    # Plot MSE against epoch
+    plt.figure(figsize=(10, 5))
+    plt.plot(df_avg.index, df_avg["MSE"], label="Mean Squared Error (MSE)")
+    plt.xlabel("Epoch")
+    plt.ylabel("MSE")
+    plt.title("MSE per Epoch")
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(f"results/{output_dir}/MSE_vs_epoch.png", dpi=300)
     plt.show()
 
     # Plot PSNR against epoch
@@ -179,10 +190,13 @@ def plot_from_csv_inferencing(output_dir, csv_file="inference_log.csv"):
     csv_path = f"inference_results/{output_dir}/{csv_file}"
     df = pd.read_csv(csv_path)
     # agg(): https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.agg.html
-    grouped = df.groupby("Folder").agg({"PSNR": ["min","max","mean"], "SSIM": ["min","max","mean"]})
+    grouped = df.groupby("Folder").agg({"MSE": ["min","max","mean"], "PSNR": ["min","max","mean"], "SSIM": ["min","max","mean"]})
     # Put folder names into a list
     folder_names = grouped.index.tolist()
 
+    mean_mse = grouped["MSE"]["mean"].values
+    min_mse  = grouped["MSE"]["min"].values
+    max_mse  = grouped["MSE"]["max"].values
     mean_psnr = grouped["PSNR"]["mean"].values
     min_psnr  = grouped["PSNR"]["min"].values
     max_psnr  = grouped["PSNR"]["max"].values
@@ -191,6 +205,8 @@ def plot_from_csv_inferencing(output_dir, csv_file="inference_log.csv"):
     max_ssim  = grouped["SSIM"]["max"].values
 
     # For error bars
+    lower_err_mse = mean_mse - min_mse
+    upper_err_mse = max_mse - mean_mse
     lower_err_psnr = mean_psnr - min_psnr
     upper_err_psnr = max_psnr - mean_psnr
     lower_err_ssim = mean_ssim - min_ssim
@@ -198,6 +214,25 @@ def plot_from_csv_inferencing(output_dir, csv_file="inference_log.csv"):
 
     # Make an x-axis index for each folder
     x_indices = np.arange(len(folder_names))
+
+    # MSE
+    plt.figure(figsize=(12, 7.5))
+    plt.bar(
+        x_indices,
+        mean_mse,
+        color='orange',
+        alpha=0.7,
+        yerr=[lower_err_mse, upper_err_mse],
+        capsize=5,
+        align='center'
+    )
+    plt.xticks(x_indices, folder_names)
+    plt.xlabel("Folder")
+    plt.ylabel("MSE")
+    plt.title("MSE by Folder (min, mean, max)")
+
+    plt.savefig(os.path.join(f"inference_results/{output_dir}", "MSE_per_folder.png"), dpi=300)
+    plt.show()
 
     # PSNR
     plt.figure(figsize=(12, 7.5))
@@ -248,20 +283,20 @@ def plot_from_csv_inferencing(output_dir, csv_file="inference_log.csv"):
     
     return
 
-# Calculate peak signal to noise ratio (PSNR) over inpainted region, returns scalar value in decbels, dB
-# Formula: https://en.wikipedia.org/wiki/Peak_signal-to-noise_ratio
-def cal_PSNR(composite_image, ground_truth, mask):
+def cal_MSE(composite_image, ground_truth, mask):
     # Consider masked regions only, pick all channels for each pixel location where mask==0
     comp_inpainted = composite_image[:, mask==0]
     gt_inpainted = ground_truth[:, mask==0]
-
-    data_range = gt_inpainted.max() - gt_inpainted.min()
-
-    # Calculate MSE
     MSE = np.mean((comp_inpainted - gt_inpainted)**2)
     if MSE < 1e-10:
         return 100.0  # Very identical, see James' dynamicenv.py, line 19
-    
+    return MSE
+
+# Calculate peak signal to noise ratio (PSNR) over inpainted region, returns scalar value in decbels, dB
+# Formula: https://en.wikipedia.org/wiki/Peak_signal-to-noise_ratio
+def cal_PSNR(composite_image, ground_truth, mask):
+    data_range = ground_truth.max() - ground_truth.min()
+    MSE = cal_MSE(composite_image, ground_truth, mask)
     PSNR = 10 * np.log10((data_range)**2 / MSE)
     return PSNR
 

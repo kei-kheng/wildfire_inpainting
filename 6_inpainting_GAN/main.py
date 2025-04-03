@@ -17,6 +17,7 @@ from image_utils import (
     get_transform, 
     apply_mask, 
     plot_from_csv_training,
+    cal_MSE,
     cal_PSNR,
     cal_SSIM
     )
@@ -57,7 +58,7 @@ def main():
     csv_path = f"results/{args.output_dir}/training_log.csv"
     with open(csv_path, "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["Epoch", "Batch", "LossD", "LossG", "LossG_recon", "PSNR", "SSIM"])
+        writer.writerow(["Epoch", "Batch", "LossD", "LossG", "LossG_recon", "MSE", "PSNR", "SSIM"])
 
     transform = get_transform(args.img_scaled_dim)
     
@@ -154,7 +155,8 @@ def main():
             lossG.backward()
             optimizerG.step()
 
-            # Calculate PSNR and SSIM
+            # Calculate MSE, PSNR and SSIM
+            MSE_vals = []
             PSNR_vals = []
             SSIM_vals = []
 
@@ -165,12 +167,15 @@ def main():
                     mask_j = masks[j].cpu().numpy()
 
                     # Pass only one channel of mask because each channel of 'masks' is identical
+                    MSE_val = cal_MSE(comp_j, real_j, mask_j[0])
                     PSNR_val = cal_PSNR(comp_j, real_j, mask_j[0])
                     SSIM_val = cal_SSIM(comp_j, real_j, mask_j[0])
 
+                    MSE_vals.append(MSE_val)
                     PSNR_vals.append(PSNR_val)
                     SSIM_vals.append(SSIM_val)
-            
+
+            avg_MSE = np.mean(MSE_vals)
             avg_PSNR = np.mean(PSNR_vals)
             avg_SSIM = np.mean(SSIM_vals)
 
@@ -178,18 +183,19 @@ def main():
             print(
             f"Epoch [{epoch+1}/{args.epochs}] Batch [{i+1}/{len(dataloader)}] "
             f"LossD: {lossD.item():.4f}, LossG: {lossG.item():.4f}, LossG_recon: {lossG_recon.item():.4f}, "
-            f"PSNR = {avg_PSNR:.4f}, SSIM = {avg_SSIM:.4f}"
+            f"MSE = {avg_MSE:.4f}, PSNR = {avg_PSNR:.4f}, SSIM = {avg_SSIM:.4f}"
             )
 
             # Append epoch number, batch number and losses to created CSV
             with open(csv_path, "a", newline="") as f:
                 writer = csv.writer(f)
-                # Epoch / Batch / LossD / LossG / LossG_recon / PSNR / SSIM
+                # Epoch / Batch / LossD / LossG / LossG_recon / MSE / PSNR / SSIM
                 writer.writerow([
                     epoch + 1, i + 1, 
                     f"{lossD.item():.5f}", 
                     f"{lossG.item():.5f}", 
                     f"{lossG_recon.item():.5f}", 
+                    f"{avg_MSE:.4f}",
                     f"{avg_PSNR:.4f}", 
                     f"{avg_SSIM:.4f}"
                 ])
