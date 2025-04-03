@@ -44,7 +44,7 @@ python main.py --data_dir dataset/IR_images --folders 3 5 6 7 --img_scaled_dim 3
 
 **Example**
 ```
-python inference.py --data_dir dataset/inference --folders 3 5 6 7 --model_path models/test2/generator.pth --img_scaled_dim 320 --coverage 0.15 --batch_size 5 --output_dir inference_results/test2 --num_show 5
+python inference.py --data_dir dataset/inference --folders 3 5 6 7 --model_path models/test2/generator.pth --img_scaled_dim 320 --coverage 0.15 --batch_size 5 --output_dir test2 --num_show 5
 ```
 
 # Results

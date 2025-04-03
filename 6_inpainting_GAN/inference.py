@@ -13,6 +13,7 @@ from image_utils import (
     get_transform, 
     apply_mask,
     plot_from_csv_inferencing,
+    cal_MSE,
     cal_PSNR,
     cal_SSIM
     )
@@ -46,7 +47,7 @@ def main():
     csv_path = f"inference_results/{args.output_dir}/inference_log.csv"
     with open(csv_path, "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["Folder", "Image", "PSNR", "SSIM"])
+        writer.writerow(["Folder", "Image", "MSE", "PSNR", "SSIM"])
 
     # Load each folder separately to write to CSV
     for folder in args.folders:
@@ -73,12 +74,13 @@ def main():
                 # print("masks:", masks)
                 # print("g_out:", g_out)'
 
-                # Calculate PSNR and SSIM
+                # Calculate MSE, PSNR and SSIM
                 for i in range(images.size(0)):
                     comp_i = comp[i].cpu().numpy()
                     real_i = images[i].cpu().numpy()
                     mask_i = masks[i].cpu().numpy()
 
+                    MSE_val = cal_MSE(comp_i, real_i, mask_i[0])
                     PSNR_val = cal_PSNR(comp_i, real_i, mask_i[0])
                     SSIM_val = cal_SSIM(comp_i, real_i, mask_i[0])
 
@@ -89,10 +91,11 @@ def main():
                     # Write a row
                     with open(csv_path, "a", newline="") as f:
                         writer = csv.writer(f)
-                        # Folder / Image / PSNR / SSIM
+                        # Folder / Image / MSE / PSNR / SSIM
                         writer.writerow([
                             folder, 
-                            fname, 
+                            fname,
+                            f"{MSE_val:.4f}",
                             f"{PSNR_val:.4f}", 
                             f"{SSIM_val:.4f}"
                         ])
