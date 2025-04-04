@@ -1,7 +1,7 @@
 # Description
 This code implements a Generative Adversarial Network (GAN) to perform inpainting on [overhead infrared (IR) images of a series of prescribed fires on an area of 10 x 10 m](https://www.fs.usda.gov/rds/archive/catalog/RDS-2022-0076). The GAN has two sub-models, the context encoder (generator) and patch discriminator (discriminator). The images extracted from each video instance were limited to 100 to make the dataset more compact and diverse. This also avoids the model from biasing and overfitting. (Beyond test6) The 100 images were then split into 90 images as the training dataset and 10 images used to validate the model.
 
-**Evaluation metrics:** PSNR, SSIM. Calculated over inpainted regions only.
+**Evaluation metrics:** MSE, PSNR, SSIM. Calculated over the **entire image**. Older implementation calculates these over the inpainted regions only, modified to be consistent with 7_environment_RGB.
 
 - `main.py` trains the models on the training dataset and saves the models. During each epoch, the results (ground truth, masked images and inpainted images) are saved to 'results'. The training conditions are saved in a TXT file in 'models/{args.output_dir}', epoch number, losses and evaluation metrics are logged in a CSV file, plotted and saved in 'results'.
 - `inference.py` loads a trained generator and performs inferencing, on dataset it has never seen during its training phase. It then writes to and plots from a CSV file (PSNR and SSIM against 'folders').

@@ -120,6 +120,23 @@ def apply_mask(batch, coverage):
     masks = torch.cat(mask_list, dim=0)  # (B,3,H,W)
     return masked, masks
 
+def cal_MSE(composite_image, ground_truth):
+    MSE = np.mean((composite_image - ground_truth)**2)
+    if MSE < 1e-10:
+        return 100.0
+    return MSE
+
+def cal_PSNR(composite_image, ground_truth):
+    data_range = ground_truth.max() - ground_truth.min()
+    MSE = cal_MSE(composite_image, ground_truth)
+    PSNR = 10 * np.log10((data_range)**2 / MSE)
+    return PSNR
+
+def cal_SSIM(composite_image, ground_truth, win_size=7):
+    data_range = ground_truth.max() - ground_truth.min()
+    SSIM_value = SSIM(ground_truth, composite_image, data_range=data_range, channel_axis=0, win_size=win_size)
+    return SSIM_value
+
 def plot_from_csv_training(output_dir, csv_file="training_log.csv"):
     # Load CSV as Pandas DataFrame
     csv_path = f"results/{output_dir}/{csv_file}"
@@ -283,6 +300,9 @@ def plot_from_csv_inferencing(output_dir, csv_file="inference_log.csv"):
     
     return
 
+
+# Old implementation
+'''
 def cal_MSE(composite_image, ground_truth, mask):
     # Consider masked regions only, pick all channels for each pixel location where mask==0
     comp_inpainted = composite_image[:, mask==0]
@@ -313,13 +333,11 @@ def cal_SSIM(composite_image, ground_truth, mask, win_size=7):
     x0, y0 = coords.min(axis=0)
     x1, y1 = coords.max(axis=0) + 1  # +1 for slicing
     
-    '''
     # Debug & Verification
-    print("x0: ", x0)
-    print("x1: ", x1)
-    print("y0: ", y0)
-    print("y1: ", y1)
-    '''
+    # print("x0: ", x0)
+    # print("x1: ", x1)
+    # print("y0: ", y0)
+    # print("y1: ", y1)
 
     # Crop -> (3, H, W)
     comp_crop = composite_image[:, y0:y1, x0:x1]
@@ -344,3 +362,4 @@ def cal_SSIM(composite_image, ground_truth, mask, win_size=7):
     # Image shape: (C, H, W) -> Channel axis = 0
     SSIM_value = SSIM(gt_crop, comp_crop, data_range=data_range, channel_axis=0, win_size=win_size)
     return SSIM_value
+'''

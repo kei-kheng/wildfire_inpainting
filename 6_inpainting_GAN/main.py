@@ -164,12 +164,12 @@ def main():
                 for j in range(real_imgs.size(0)):
                     comp_j = comp[j].cpu().numpy()
                     real_j = real_imgs[j].cpu().numpy()
-                    mask_j = masks[j].cpu().numpy()
+                    # mask_j = masks[j].cpu().numpy()
 
                     # Pass only one channel of mask because each channel of 'masks' is identical
-                    MSE_val = cal_MSE(comp_j, real_j, mask_j[0])
-                    PSNR_val = cal_PSNR(comp_j, real_j, mask_j[0])
-                    SSIM_val = cal_SSIM(comp_j, real_j, mask_j[0])
+                    MSE_val = cal_MSE(comp_j, real_j)
+                    PSNR_val = cal_PSNR(comp_j, real_j)
+                    SSIM_val = cal_SSIM(comp_j, real_j)
 
                     MSE_vals.append(MSE_val)
                     PSNR_vals.append(PSNR_val)

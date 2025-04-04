@@ -78,11 +78,11 @@ def main():
                 for i in range(images.size(0)):
                     comp_i = comp[i].cpu().numpy()
                     real_i = images[i].cpu().numpy()
-                    mask_i = masks[i].cpu().numpy()
+                    # mask_i = masks[i].cpu().numpy()
 
-                    MSE_val = cal_MSE(comp_i, real_i, mask_i[0])
-                    PSNR_val = cal_PSNR(comp_i, real_i, mask_i[0])
-                    SSIM_val = cal_SSIM(comp_i, real_i, mask_i[0])
+                    MSE_val = cal_MSE(comp_i, real_i)
+                    PSNR_val = cal_PSNR(comp_i, real_i)
+                    SSIM_val = cal_SSIM(comp_i, real_i)
 
                     # os.path.splitext(): Split into root and extension
                     fname = filenames[i]
