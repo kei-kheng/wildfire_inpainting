@@ -1,3 +1,9 @@
+# James' latest version of code
 james_new.zip 
+# Commands to generate ellipses for training locally
 commands.txt
-6_inpainting_GAN/dataset/IR_images/
+
+# Ignore all IR_images folder contents except zip files
+6_inpainting_GAN/dataset/IR_images/*
+!6_inpainting_GAN/dataset/IR_images/
+!6_inpainting_GAN/dataset/IR_images/*.zip
