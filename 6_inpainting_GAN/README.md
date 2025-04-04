@@ -47,7 +47,7 @@ python main.py --data_dir dataset/IR_images --folders 3 5 6 7 --img_scaled_dim 3
 python inference.py --data_dir dataset/inference --folders 3 5 6 7 --model_path models/test2/generator.pth --img_scaled_dim 320 --coverage 0.15 --batch_size 5 --output_dir test2 --num_show 5
 ```
 
-# Results
+# Results (preliminary_tests)
 - test1 and test2 contain the training conditions for the currently best-known parameters, differing only in `img_scaled_dim`. It was found that a batch size of 16 yielded the shortest training time and best inpainting performance. Tested: 16, 32, 64 for a dataset size of 500.
 - test3 and test4 trained models on small and big datasets respectively, where each training image is randomly rotated up to 360 degrees. This caused the model to learn useless representation of the black, unfilled regions due to rotation.
 - test5 and test6 trained models on small (522) and big (903) datasets on rotated images (0, 90, 180, 270) with the appplication of more complex masks.
