@@ -6,6 +6,7 @@
 - [James' Autoencoder](https://github.com/JamesHarcourt7/autoencoder-perception)
 - [2D Shape Generator](https://github.com/TimoFlesch/2D-Shape-Generator)
 - [PartialConv2d](https://github.com/NVIDIA/partialconv)
+- [Dataset of Overhead IR Images of 10x10m Fire](https://www.fs.usda.gov/rds/archive/catalog/RDS-2022-0076)
 
 # Future Work
 - Improve model to generalize better: modify architecture to use **partial convolution**, introduce **different masks/noises**.
