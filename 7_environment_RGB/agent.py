@@ -72,7 +72,7 @@ class Agent:
             if not ((0 <= nx < self.env_w) and 0 <= (ny < self.env_h)):
                 continue
 
-            # Ensure valid indices when extracting confidence patch, (H, W) NumPy array, +1 for correct array indexing
+            # Ensure valid indices when extracting confidence patch, +1 for correct array indexing
             patch = self.confidence[
                 max(dx - SAMPLE_RADIUS, 0):min(dx + SAMPLE_RADIUS + 1, self.env_w),
                 max(dy - SAMPLE_RADIUS, 0):min(dy + SAMPLE_RADIUS + 1, self.env_h)
