@@ -5,7 +5,7 @@ This code loads two randomly chosen images from the inference dataset as the env
     - `confidence`: Models information decay for agents to adapt to dynamic environment
 and are able to communicate with agents within its communication range, exchanging information. When the size of the payload is limited, agents prioritize transmitting observation with higher confidence values. `observed` and `explored` decay at a fixed rate and information below the confidence threshold are phased out. The Pygame window displays 5 agents' prediction based on their respective observations. Screenshots of the window are captured periodically. Simulation conditions are written to a text file and the evaluation metrics are plotted against the simulation time at the end of simulation.
 
-**Evaluation metrics:** PSNR, SSIM. Calculated over **entire image** from the perspective of `agent_1` - _different from 6_inpainting_GAN_. 
+**Evaluation metrics:** MSE, PSNR, SSIM. Calculated over **entire image** from the perspective of `agent_1`.
 
 # Usage - main.py
 ## Parameters
