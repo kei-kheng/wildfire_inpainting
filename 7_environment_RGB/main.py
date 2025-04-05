@@ -35,6 +35,7 @@ def main():
     parser.add_argument("--agent_confidence_decay", type=float, default=0.001)
     parser.add_argument("--agent_confidence_threshold", type=float, default=0.15)
     parser.add_argument("--agent_policy", type=str, default="random")
+    parser.add_argument("--agent_sample_points", type=int, default=4)
     parser.add_argument("--log_comm", action="store_true")
     parser.add_argument("--steps", type=int, default=10000)
     parser.add_argument("--output_dir", type=str, default="test")
@@ -97,19 +98,31 @@ def main():
 
     # Instantiate agents at runtime: agent_1, agent_2...
     # Each agent accesses and updates their own maps only
-    # Be careful when passing 'position' -> Invert them! 
     agents = {}
-    for i in range(1, args.no_of_agents + 1):
+    agent_keys = [f"agent_{i}" for i in range(1, args.no_of_agents + 1)]
+
+    if args.agent_policy == "mixed":
+        random.shuffle(agent_keys)
+        half = len(agent_keys) // 2
+        # agent: policy dict
+        policy_dict = {
+            key: "random" if i < half else "confidence"
+            for i, key in enumerate(agent_keys)
+        }
+    else:
+        policy_dict = {key: args.agent_policy for key in agent_keys}
+
+    for agent_key in agent_keys:
         observed_map = np.zeros((env_h, env_w, env_c), dtype=np.float32)
         explored_map = np.zeros((env_h, env_w), dtype=np.float32)
         confidence_matrix = np.zeros((env_h, env_w), dtype=np.float32)
 
-        agents[f"agent_{i}"] = Agent(
-            position=(  # Pass coordinates as (y, x) -> Tested
-                random.randint(0, env_h),
+        agents[agent_key] = Agent(
+            position=(
                 random.randint(0, env_w),
+                random.randint(0, env_h),
             ),
-            env_size=(env_h, env_w),
+            env_size=(env_w, env_h),
             patch_size=args.agent_patch_size,
             comm_range=args.agent_comm_range,
             observed=observed_map,
@@ -117,22 +130,26 @@ def main():
             confidence=confidence_matrix,
             confidence_decay=args.agent_confidence_decay,
             confidence_threshold=args.agent_confidence_threshold,
-            policy=args.agent_policy
+            policy=policy_dict[agent_key],
+            sample_points=args.agent_sample_points
         )
     
     # Choose 4 agents besides agent_1 randomly whose maps are to be displayed
-    agent_keys = list(agents.keys())
-    agent_keys.remove("agent_1")
-    displayed_agents_list = random.sample(agent_keys, 4)
-    displayed_agents_dict = {}
-    agent_colour = [(0, 255, 0), (0, 255, 255), (0, 0, 255), (255, 0, 255)]
-    for agent, colour in zip(displayed_agents_list, agent_colour):
-        displayed_agents_dict[agent] = colour
+    if args.no_of_agents > 1:
+        agent_keys.remove("agent_1")
+        displayed_agents_list = random.sample(agent_keys, 4)
+        displayed_agents_dict = {}
+        agent_colour = [(0, 255, 0), (0, 255, 255), (0, 0, 255), (255, 0, 255)]
+        for agent, colour in zip(displayed_agents_list, agent_colour):
+            displayed_agents_dict[agent] = colour
 
     pygame.init()
     # Screen setup and clock initialisation
     window_w = env_w * scale * col
-    window_h = (2 * env_h + y_offset) * scale
+    if args.no_of_agents > 1:
+        window_h = (2 * env_h + y_offset) * scale
+    else:
+        window_h = (env_h + y_offset) * scale
     window_font = pygame.font.SysFont("Comic Sans MS", 24)
     screen = pygame.display.set_mode((window_w, window_h))
     clock = pygame.time.Clock()
@@ -204,8 +221,8 @@ def main():
                 agent_i.communicate_with(agent_j, confidence_reception=args.agent_confidence_reception)
 
                 # Draw white line between communicating agents
-                y1, x1 = agent_i.get_position()
-                y2, x2 = agent_j.get_position()
+                x1, y1 = agent_i.get_position()
+                x2, y2 = agent_j.get_position()
                 pygame.draw.line(
                     screen,
                     (255, 255, 255),
@@ -232,14 +249,19 @@ def main():
                 colour = (255, 0, 0)
             agents[agent_key].draw(screen, scale, window_w * (1.0 / 4.0), colour)
 
-        # 3rd column - Explored Area
-        text_surface = window_font.render("Agent 1's Explored Area", False, (0, 0, 0))
+        # 3rd column - Confidence Matrix
+        text_surface = window_font.render("Agent 1's Confidence Matrix", False, (0, 0, 0))
         screen.blit(text_surface, (window_w * (2.0 / 4.0) + x_offset, 0))
 
-        exp_array = agents["agent_1"].get_explored()
+        # Old implementation - Showing explored areas
+        '''
         # Multiplication by 255 to convert [0, 1] to [0, 255] -> Pygame's expected input format
         exp_surface = nparray_to_surface(exp_array * 255.0, scale, grayscale=True)
         screen.blit(exp_surface, (window_w * (2.0 / 4.0), y_offset))
+        '''
+        confidence_array = agents["agent_1"].get_confidence()
+        confidence_surface = nparray_to_surface(confidence_array * 255.0, scale, grayscale=True)
+        screen.blit(confidence_surface, (window_w * (2.0 / 4.0), y_offset))
 
         # 4th column - Prediction
         # Legend
@@ -249,11 +271,12 @@ def main():
                 legend_size, legend_size
             )
         )
-        text_surface = window_font.render("Agent 1's Prediction", False, (0, 0, 0))
+        agent_policy = agents["agent_1"].get_policy()
+        text_surface = window_font.render(f"Agent 1's Prediction, policy: {agent_policy}", False, (0, 0, 0))
         screen.blit(text_surface, (window_w * (3.0 / 4.0) + 2 * x_offset + legend_size, 0))
 
         '''
-        # -> Passing observed_tensor as the model's input would give weird-coloured outputs -> Took 3 days to figure this out!
+        # Passing observed_tensor as the model's input without multiplication by mask would give weird-coloured outputs
         import torchvision.transforms as T
         transform = T.Compose([
             T.ToTensor(),
@@ -263,6 +286,7 @@ def main():
         observed_tensor = observed_tensor.unsqueeze(0).to(device) # Convert to tensor, normalize to [-1, 1]
         '''
         
+        exp_array = agents["agent_1"].get_explored()
         mask_3ch = np.repeat(exp_array[np.newaxis, :, :], 3, axis=0)  # Derive a 3-channeled mask from 'exp_array'
         mask_tensor = torch.from_numpy(mask_3ch)  # Convert to tensor, shape -> (C, H, W)
         # masked_env_tensor = (env_tensor * mask_tensor).to(device)  # For static environment
@@ -300,36 +324,37 @@ def main():
         screen.blit(comp_surface, (window_w * (3.0 / 4.0), y_offset))
 
         # 2nd row - Display observation of agents in displayed_agents_list
-        for idx, d_agent_key in enumerate(displayed_agents_list):
-            pygame.draw.rect(screen, displayed_agents_dict[d_agent_key], pygame.Rect(
-                window_w * (idx / 4.0) + x_offset,
-                env_h * scale + y_offset + 10.0,
-                legend_size, legend_size
+        if args.no_of_agents > 1:
+            for idx, d_agent_key in enumerate(displayed_agents_list):
+                pygame.draw.rect(screen, displayed_agents_dict[d_agent_key], pygame.Rect(
+                    window_w * (idx / 4.0) + x_offset,
+                    env_h * scale + y_offset + 10.0,
+                    legend_size, legend_size
+                    )
                 )
-            )
+                agent_policy = agents[d_agent_key].get_policy()
+                text_surface = window_font.render(f"Prediction ({d_agent_key}), policy: {agent_policy}", False, (0, 0, 0))
+                screen.blit(text_surface, (window_w * (idx / 4.0) + 2 * x_offset + legend_size, env_h * scale + y_offset))
 
-            text_surface = window_font.render(f"Prediction ({d_agent_key})", False, (0, 0, 0))
-            screen.blit(text_surface, (window_w * (idx / 4.0) + 2 * x_offset + legend_size, env_h * scale + y_offset))
+                d_explored = agents[d_agent_key].get_explored()
+                d_observed_array = agents[d_agent_key].get_observation()
+                d_obs_tensor = torch.from_numpy(d_observed_array).permute(2, 0, 1).float()
+                d_obs_tensor = (d_obs_tensor / 255.0 - 0.5) * 2.0
+                d_mask = np.repeat(d_explored[np.newaxis, :, :], 3, axis=0)
+                d_mask_tensor = torch.from_numpy(d_mask)
+                # d_masked_env_tensor = (env_tensor * d_mask_tensor).to(device) # For static environment
+                d_masked_env_tensor = (d_obs_tensor * d_mask_tensor).to(device)
 
-            d_explored = agents[d_agent_key].get_explored()
-            d_observed_array = agents[d_agent_key].get_observation()
-            d_obs_tensor = torch.from_numpy(d_observed_array).permute(2, 0, 1).float()
-            d_obs_tensor = (d_obs_tensor / 255.0 - 0.5) * 2.0
-            d_mask = np.repeat(d_explored[np.newaxis, :, :], 3, axis=0)
-            d_mask_tensor = torch.from_numpy(d_mask)
-            # d_masked_env_tensor = (env_tensor * d_mask_tensor).to(device) # For static environment
-            d_masked_env_tensor = (d_obs_tensor * d_mask_tensor).to(device)
+                with torch.no_grad():
+                    d_predicted_tensor = model(d_masked_env_tensor.unsqueeze(0))
+                d_predicted_tensor = d_predicted_tensor.cpu().squeeze()
 
-            with torch.no_grad():
-                d_predicted_tensor = model(d_masked_env_tensor.unsqueeze(0))
-            d_predicted_tensor = d_predicted_tensor.cpu().squeeze()
-
-            d_comp_tensor = d_obs_tensor * d_mask_tensor + d_predicted_tensor * (1 - d_mask_tensor)
-            d_comp_array = d_comp_tensor.numpy()
-            d_comp_array = np.transpose(d_comp_array, (1, 2, 0))
-            d_comp_array = ((d_comp_array + 1.0) / 2.0)
-            d_comp_surface = nparray_to_surface(d_comp_array * 255.0, scale)
-            screen.blit(d_comp_surface, (window_w * (idx / 4.0), env_h * scale + 2 * y_offset))    
+                d_comp_tensor = d_obs_tensor * d_mask_tensor + d_predicted_tensor * (1 - d_mask_tensor)
+                d_comp_array = d_comp_tensor.numpy()
+                d_comp_array = np.transpose(d_comp_array, (1, 2, 0))
+                d_comp_array = ((d_comp_array + 1.0) / 2.0)
+                d_comp_surface = nparray_to_surface(d_comp_array * 255.0, scale)
+                screen.blit(d_comp_surface, (window_w * (idx / 4.0), env_h * scale + 2 * y_offset))    
 
         # Calculate PSNR and SSIM, write to CSV
         if step % 10 == 0:

@@ -12,14 +12,15 @@ and are able to communicate with agents within its communication range, exchangi
 ```
 --img_scaled_dim               The dimension of the longest side of the image after scaling
 --model_path                   Path to load trained model from
---no_of_agents                 Number of agents to be deployed in environment, must be greater than 1
+--no_of_agents                 Number of agents to be deployed in environment, must be either 1 or >= 5
 --agent_patch_size             Size of patch observable by agent in pixels
 --agent_comm_range             Communication range of agents in pixels based on the Euclidean/Pythagorean distance
 --max_payload_size             Maximum payload size in bytes (transmission of each pixel are assumed to cost 3 bytes)
 --agent_confidence_reception   Confidence value assigned to received payload (want received information to stay long enough to be useful)
 --agent_confidence_decay       Rate at which confidence decays, calculated as new_confidence = old_confidence * (1 - agent_confidence_decay) at each time step
 --agent_confidence_threshold   Confidence threshold, information with confidence below this value will be phased out
---agent_policy                 Movement policy of agent: "random" or "confidence". "confidence" drives agents towards low_confidence regions
+--agent_policy                 Movement policy of agent: "random" or "confidence". When "mixed", half the agents walk randomly, the other half use confidence-based walking
+--agent_sample_points          Number of points to sample in confidence matrix when using confidence-based walking
 --log_comm                     Option to log communication between agents, turning this on might slow down simulation
 --steps                        Length of simulation in simulation time
 --output_dir                   Folder in which results are stored

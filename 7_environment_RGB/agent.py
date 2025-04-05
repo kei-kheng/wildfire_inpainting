@@ -12,8 +12,8 @@ SAMPLE_RADIUS = 5
 OFFSET = 15
 
 class Agent:
-    def __init__(self, position, env_size, patch_size, comm_range, observed, explored, confidence, confidence_decay, confidence_threshold, policy):
-        self.position = position
+    def __init__(self, position, env_size, patch_size, comm_range, observed, explored, confidence, confidence_decay, confidence_threshold, policy, sample_points):
+        self.position = position  # x, y
         self.env_w = env_size[0]
         self.env_h = env_size[1]
         self.patch_size = patch_size
@@ -32,15 +32,30 @@ class Agent:
         self.policy = policy
 
         if self.policy == "confidence":
-            self.sample_targets = [
-                (SAMPLE_RADIUS + OFFSET, SAMPLE_RADIUS + OFFSET),
-                (self.env_w - SAMPLE_RADIUS - OFFSET, self.env_h - SAMPLE_RADIUS - OFFSET),
-                (SAMPLE_RADIUS+ OFFSET, self.env_h - SAMPLE_RADIUS - OFFSET),
-                (self.env_w - SAMPLE_RADIUS - OFFSET, SAMPLE_RADIUS + OFFSET),
-            ]
+            if sample_points == 4:
+                self.sample_targets = [
+                    (SAMPLE_RADIUS + OFFSET, SAMPLE_RADIUS + OFFSET),
+                    (self.env_w - SAMPLE_RADIUS - OFFSET, self.env_h - SAMPLE_RADIUS - OFFSET),
+                    (SAMPLE_RADIUS + OFFSET, self.env_h - SAMPLE_RADIUS - OFFSET),
+                    (self.env_w - SAMPLE_RADIUS - OFFSET, SAMPLE_RADIUS + OFFSET),
+                ]
+            elif sample_points == 8:
+                self.sample_targets = [
+                    # Corners
+                    (SAMPLE_RADIUS + OFFSET, SAMPLE_RADIUS + OFFSET),
+                    (self.env_w - SAMPLE_RADIUS - OFFSET, self.env_h - SAMPLE_RADIUS - OFFSET),
+                    (SAMPLE_RADIUS + OFFSET, self.env_h - SAMPLE_RADIUS - OFFSET),
+                    (self.env_w - SAMPLE_RADIUS - OFFSET, SAMPLE_RADIUS + OFFSET),
+                    # Midpoints of each edge
+                    (self.env_w // 2, SAMPLE_RADIUS + OFFSET),
+                    (self.env_w // 2, self.env_h - SAMPLE_RADIUS - OFFSET),
+                    (SAMPLE_RADIUS + OFFSET, self.env_h // 2),
+                    (self.env_w - SAMPLE_RADIUS - OFFSET, self.env_h // 2),
+                ]
 
         # Default: Move to the right
-        self.dy, self.dx = 0, SPEED
+        self.dx = SPEED
+        self.dy = 0
 
     # Change moving direction with 30% probability
     def random_walk(self):
@@ -69,13 +84,13 @@ class Agent:
             # Center of patches that we sample in each direction
             nx, ny = pos_x + dx * LOOKAHEAD_DISTANCE, pos_y + dy * LOOKAHEAD_DISTANCE
             # If out of bounds, skip this direction
-            if not ((0 <= nx < self.env_w) and 0 <= (ny < self.env_h)):
+            if not ((0 <= nx < self.env_w) and (0 <= ny < self.env_h)):
                 continue
 
-            # Ensure valid indices when extracting confidence patch, +1 for correct array indexing
+            # Ensure valid indices when extracting confidence patch, +1 for correct array slicing
             patch = self.confidence[
-                max(dx - SAMPLE_RADIUS, 0):min(dx + SAMPLE_RADIUS + 1, self.env_w),
-                max(dy - SAMPLE_RADIUS, 0):min(dy + SAMPLE_RADIUS + 1, self.env_h)
+                max(dy - SAMPLE_RADIUS, 0):min(dy + SAMPLE_RADIUS + 1, self.env_h),
+                max(dx - SAMPLE_RADIUS, 0):min(dx + SAMPLE_RADIUS + 1, self.env_w)
             ]
             mean_conf = np.mean(patch)
             if mean_conf <= lowest_conf:
@@ -97,8 +112,8 @@ class Agent:
 
         for tx, ty in self.sample_targets:
             patch = self.confidence[
-                max(tx - SAMPLE_RADIUS, 0):min(tx + SAMPLE_RADIUS + 1, self.env_w),
-                max(ty - SAMPLE_RADIUS, 0):min(ty + SAMPLE_RADIUS + 1, self.env_h)
+                max(ty - SAMPLE_RADIUS, 0):min(ty + SAMPLE_RADIUS + 1, self.env_h),
+                max(tx - SAMPLE_RADIUS, 0):min(tx + SAMPLE_RADIUS + 1, self.env_w)
             ]
             mean_conf = np.mean(patch)
             if mean_conf <= lowest_conf:
@@ -125,13 +140,13 @@ class Agent:
         y1 = min(self.env_h - 1, pos_y + observe_radius)
 
         # '+1' due to how array slicing works in Python
-        patch = env_array[x0 : x1 + 1, y0 : y1 + 1, :]
+        patch = env_array[y0 : y1 + 1, x0 : x1 + 1, :]
 
         # Update agent's maps
-        self.observed[x0 : x1 + 1, y0 : y1 + 1, :] = patch
-        self.explored[x0 : x1 + 1, y0 : y1 + 1] = 1.0
+        self.observed[y0 : y1 + 1, x0 : x1 + 1, :] = patch
+        self.explored[y0 : y1 + 1, x0 : x1 + 1] = 1.0
         # Agents are very confident with newly observed areas
-        self.confidence[x0 : x1 + 1, y0 : y1 + 1] = 1.0
+        self.confidence[y0 : y1 + 1, x0 : x1 + 1] = 1.0
         if self.policy == "random":
             self.random_walk()
         elif self.policy =="confidence":
@@ -216,6 +231,9 @@ class Agent:
     def get_payload(self):
         return self.payload
     
+    def get_policy(self):
+        return self.policy
+    
     def set_observation(self, observed):
         self.observed = observed
 
@@ -230,12 +248,13 @@ class Agent:
 
     # Draw agent, x_offset is provided for the agents to be drawn in the right column of the window
     def draw(self, screen, scale, x_offset, agent_colour):
+        pos_x, pos_y = self.position
         pygame.draw.rect(
             screen,
             agent_colour,
             (
-                self.position[1] * scale + x_offset,
-                self.position[0] * scale + 30,
+                pos_x * scale + x_offset,
+                pos_y * scale + 30,
                 AGENT_SIZE,
                 AGENT_SIZE,
             ),
@@ -243,24 +262,24 @@ class Agent:
         pygame.draw.circle(
             screen,
             (255, 255, 255),
-            (self.position[1] * scale + x_offset + 7, self.position[0] * scale + 32),
+            (pos_x * scale + x_offset + 7, pos_y * scale + 32),
             2,
         )
         pygame.draw.circle(
             screen,
             (255, 255, 255),
-            (self.position[1] * scale + x_offset + 2, self.position[0] * scale + 32),
+            (pos_x * scale + x_offset + 2, pos_y * scale + 32),
             2,
         )
         pygame.draw.circle(
             screen,
             (0, 0, 0),
-            (self.position[1] * scale + x_offset + 7, self.position[0] * scale + 32),
+            (pos_x * scale + x_offset + 7, pos_y * scale + 32),
             1,
         )
         pygame.draw.circle(
             screen,
             (0, 0, 0),
-            (self.position[1] * scale + x_offset + 2, self.position[0] * scale + 32),
+            (pos_x * scale + x_offset + 2, pos_y * scale + 32),
             1,
         )
