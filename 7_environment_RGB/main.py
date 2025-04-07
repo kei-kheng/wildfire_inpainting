@@ -219,6 +219,7 @@ def main():
             # If close enough, exchange information
             if distance <= args.agent_comm_range:
                 agent_i.communicate_with(agent_j, confidence_reception=args.agent_confidence_reception)
+                agent_j.communicate_with(agent_i, confidence_reception=args.agent_confidence_reception)
 
                 # Draw white line between communicating agents
                 x1, y1 = agent_i.get_position()
