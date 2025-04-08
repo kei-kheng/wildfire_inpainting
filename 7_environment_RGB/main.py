@@ -15,6 +15,7 @@ from utils import (
     random_environment,
     convert_img_to_, 
     nparray_to_surface,
+    get_size, 
     cal_MSE,
     cal_PSNR,
     cal_SSIM,
@@ -31,6 +32,7 @@ def main():
     parser.add_argument("--agent_comm_range", type=int, default=30)
     parser.add_argument("--max_payload_size", type=int, default=270)
     # -------------------------------------------------------------
+    parser.add_argument("--agent_compress", action="store_true")
     parser.add_argument("--agent_confidence_reception", type=float, default=0.6)
     parser.add_argument("--agent_confidence_decay", type=float, default=0.01)
     parser.add_argument("--agent_confidence_threshold", type=float, default=0.15)
@@ -74,11 +76,6 @@ def main():
     legend_size = 15
     agent_1_colour = (50, 255, 50)
     default_agent_colour = (0, 128, 0)
-
-    # For communication between agents
-    bytes_per_pixel = 3  # RGB, uint8
-    max_pixels = args.max_payload_size // bytes_per_pixel
-    print(f"Agents could transmit up to {max_pixels} pixels")
 
     # Load model
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -133,7 +130,8 @@ def main():
             confidence_decay=args.agent_confidence_decay,
             confidence_threshold=args.agent_confidence_threshold,
             policy=policy_dict[agent_key],
-            sample_points=args.agent_sample_points
+            sample_points=args.agent_sample_points,
+            compress_mode=args.agent_compress
         )
     
     # Choose 4 agents besides agent_1 randomly whose maps are to be displayed
@@ -184,7 +182,12 @@ def main():
         # Update agents' observation, perform random walk, populate payload and update confidence
         for i in range(1, args.no_of_agents + 1):
             agents[f"agent_{i}"].measure(env_array)
-            agents[f"agent_{i}"].populate_payload(max_pixels)
+            agents[f"agent_{i}"].populate_payload(args.max_payload_size)
+            '''
+            # For testing
+            payload_size = get_size(agents[f"agent_{i}"].get_payload())
+            print(f"agent_{i}'s payload size: {payload_size} bytes, Data compression: {args.agent_compress}")
+            '''
             agents[f"agent_{i}"].update_confidence()
         
         obs_array = agents["agent_1"].get_observation()

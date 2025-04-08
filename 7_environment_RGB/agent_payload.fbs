@@ -1,0 +1,18 @@
+table Position {
+    h_index: int;
+    w_index: int;
+}
+
+table Observation {
+    positions: Position;
+    r: uint8;
+    g: uint8;
+    b: uint8;
+}
+
+table Payload {
+    // A list of 'Observation'
+    observations: [Observation];
+}
+
+root_type Payload;

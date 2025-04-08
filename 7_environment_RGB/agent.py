@@ -2,6 +2,12 @@ import random
 import pygame
 import numpy as np
 
+# For FlatBuffers
+import flatbuffers
+import Payload
+import Observation
+import Position
+
 SPEED = 5
 DIRECTIONS = [(-1, 0), (1, 0), (0, -1), (0, 1),
               (-1, -1), (-1, 1), (1, -1), (1, 1)]
@@ -12,13 +18,14 @@ SAMPLE_RADIUS = 5
 OFFSET = 15
 
 class Agent:
-    def __init__(self, position, env_size, patch_size, comm_range, observed, explored, confidence, confidence_decay, confidence_threshold, policy, sample_points):
+    def __init__(self, position, env_size, patch_size, comm_range, observed, explored, confidence, confidence_decay, confidence_threshold, policy, sample_points, compress_mode=False):
         self.position = position  # x, y
         self.env_w = env_size[0]
         self.env_h = env_size[1]
         self.patch_size = patch_size
         self.comm_range = comm_range
         self.payload = None
+        self.compress_mode = compress_mode
 
         # Maps storing information of what the agents have seen and regions they have explored
         self.observed = observed  # 3 channels
@@ -152,8 +159,7 @@ class Agent:
         elif self.policy =="confidence":
             self.confidence_based_walk()
 
-    # Calculates payload based on restriction on payload size in bytes, prioritizing regions with higher confidence
-    # Transmission of each pixel costs at least 3 bytes -> uint8 data for 3 channels (RGB)
+    # Calculates payload based on restriction on number of pixels, prioritizing regions with higher confidence
     def populate_payload(self, max_pixels):
         # When transmissible payload is restricted, prioritize pixels with higher confidence
         # Convert 2D (H, W) into 1D H * W for sorting
@@ -170,12 +176,46 @@ class Agent:
         # print(f"h_indices = {h_indices}")
         # print(f"observed_payload = {observed_payload}")
 
-        # Package containinng list of coordinate pairs ('explored') and the corresponding RGB values
-        self.payload = {
-            "positions": list(zip(h_indices, w_indices)),
-            "observed": observed_payload,
-        }
-    
+        if self.compress_mode: # Use FlatBuffer
+            # Construct builder with 1024-byte backing array, automatically resizes backing buffer when necessary
+            # https://flatbuffers.dev/tutorial/
+            builder = flatbuffers.Builder(1024)
+            observations_raw = []
+            for (h, w), (r, g, b) in zip(zip(h_indices, w_indices), observed_payload):
+                Position.PositionStart(builder)
+                Position.AddHIndex(builder, int(h))
+                Position.AddWIndex(builder, int(w))
+                position = Position.End(builder)
+
+                Observation.ObservationStart(builder)
+                Observation.AddPositions(builder, position)
+                Observation.AddR(builder, int(r))
+                Observation.AddG(builder, int(g))
+                Observation.AddB(builder, int(b))
+                obs = Observation.End(builder)
+
+                observations_raw.append(obs)
+
+            Payload.StartObservationsVector(builder, len(observations_raw))
+            # Instead of append, FlatBuffers prepend (oldest element at the end, e.g., rightmost)!
+            for obs in reversed(observations_raw):
+                builder.PrependUOffsetTRelative(obs)
+            observations_vector = builder.EndVector()
+
+            Payload.PayloadStart(builder)
+            Payload.AddObservations(builder, observations_vector)
+            payload = Payload.End(builder)
+            builder.Finish(payload)
+            self.payload = builder.Output()
+
+        else:
+            # Implementation without FlatBuffers
+            # Dictionary containing list of coordinate pairs ('explored') and the corresponding RGB values
+            self.payload = {
+                "positions": list(zip(h_indices, w_indices)),
+                "observed": observed_payload,
+            }
+
     @staticmethod
     # Does not depend on any instance attributes
     def combine_observation(self_obs, incoming_obs):
@@ -190,14 +230,31 @@ class Agent:
         received_payload = other_agent.payload
         if received_payload is None:
             return
+    
+        if self.compress_mode:
+            # All access to the data in the flatbuffer must first go through the root object
+            payload = Payload.Payload.GetRootAs(received_payload, 0)
+            num_obs = payload.ObservationsLength()
+            for i in range(num_obs):
+                obs = payload.Observations(i)
+                pos = obs.Positions()
+                h = pos.HIndex()
+                w = pos.WIndex()
+                r = obs.R()
+                g = obs.G()
+                b = obs.B()
 
-        for (h, w), obs_pixel in zip(received_payload["positions"], received_payload["observed"]):
-            # print(f"({h}, {w}) → {obs_pixel}")
-            self.observed[h, w] = Agent.combine_observation(self.observed[h, w], obs_pixel)
-            # Combine explored flags
-            self.explored[h, w] = 1.0
-            # Assign default confidence to received data
-            self.confidence[h, w] = confidence_reception
+                self.observed[h, w] = Agent.combine_observation(self.observed[h, w], np.array([r, g, b], dtype=np.uint8))
+                self.explored[h, w] = 1.0
+                self.confidence[h, w] = confidence_reception
+        else:
+            for (h, w), obs_pixel in zip(received_payload["positions"], received_payload["observed"]):
+                # print(f"({h}, {w}) → {obs_pixel}")
+                self.observed[h, w] = Agent.combine_observation(self.observed[h, w], obs_pixel)
+                # Combine explored flags
+                self.explored[h, w] = 1.0
+                # Assign default confidence to received data
+                self.confidence[h, w] = confidence_reception
 
     '''
     Confidence Mechanism
@@ -232,7 +289,7 @@ class Agent:
     
     def get_payload(self):
         return self.payload
-    
+        
     def get_policy(self):
         return self.policy
     
