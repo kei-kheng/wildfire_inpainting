@@ -32,7 +32,7 @@ def main():
     parser.add_argument("--max_payload_size", type=int, default=270)
     # -------------------------------------------------------------
     parser.add_argument("--agent_confidence_reception", type=float, default=0.6)
-    parser.add_argument("--agent_confidence_decay", type=float, default=0.001)
+    parser.add_argument("--agent_confidence_decay", type=float, default=0.01)
     parser.add_argument("--agent_confidence_threshold", type=float, default=0.15)
     parser.add_argument("--agent_policy", type=str, default="random")
     parser.add_argument("--agent_sample_points", type=int, default=4)

@@ -209,7 +209,9 @@ class Agent:
     '''
     def update_confidence(self):
         # Update confidence matrix
-        self.confidence *= (1 - self.confidence_decay)
+        # self.confidence *= (1 - self.confidence_decay)  # Exponential decay
+        self.confidence -= self.confidence_decay # Linear decay
+        self.confidence = np.clip(self.confidence, 0.0, 1.0)
         # 'Delete' if below threshold
         low_conf_mask = self.confidence < self.confidence_threshold
         # Update agent's maps
