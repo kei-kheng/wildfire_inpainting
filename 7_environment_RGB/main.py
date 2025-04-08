@@ -273,7 +273,8 @@ def main():
             )
         )
         agent_policy = agents["agent_1"].get_policy()
-        text_surface = window_font.render(f"Agent 1's Prediction, policy: {agent_policy}", False, (0, 0, 0))
+        text_surface = window_font.render("Agent 1's Prediction", False, (0, 0, 0))
+        # text_surface = window_font.render(f"Agent 1's Prediction, policy: {agent_policy}", False, (0, 0, 0))
         screen.blit(text_surface, (window_w * (3.0 / 4.0) + 2 * x_offset + legend_size, 0))
 
         '''
@@ -333,8 +334,8 @@ def main():
                     legend_size, legend_size
                     )
                 )
-                agent_policy = agents[d_agent_key].get_policy()
-                text_surface = window_font.render(f"Prediction ({d_agent_key}), policy: {agent_policy}", False, (0, 0, 0))
+                # agent_policy = agents[d_agent_key].get_policy()
+                text_surface = window_font.render(f"Prediction ({d_agent_key})", False, (0, 0, 0))
                 screen.blit(text_surface, (window_w * (idx / 4.0) + 2 * x_offset + legend_size, env_h * scale + y_offset))
 
                 d_explored = agents[d_agent_key].get_explored()
