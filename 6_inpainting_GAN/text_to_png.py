@@ -17,7 +17,7 @@ txt_file_path = f"{dir}/{txt_file_name}.txt"
 txt_file = np.loadtxt(txt_file_path)
 out_dir = f"dataset/inference/james/images/{txt_file_name}.png"
 
-truncated_cmap = truncate_colormap(plt.cm.inferno, 0.15, 1)
+truncated_cmap = truncate_colormap(plt.cm.inferno, 0.2, 1)
 
 plt.imshow(txt_file, cmap=truncated_cmap)
 plt.axis("off")

@@ -1,0 +1,13 @@
+Inferencing on image from James
+
+Mask1
+- mask_1ch[0:50, 150:200] = 0.0
+
+Mask2
+- mask_1ch[100:110, 110:140] = 0.0
+
+Mask3
+- mask_1ch[105:115, 140:160] = 0.0
+
+Mask4
+- mask_1ch[100:120, 130:170] = 0.0
