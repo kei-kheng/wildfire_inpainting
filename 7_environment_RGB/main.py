@@ -72,6 +72,8 @@ def main():
     x_offset = 5.0
     y_offset = 40.0
     legend_size = 15
+    agent_1_colour = (50, 255, 50)
+    default_agent_colour = (0, 128, 0)
 
     # For communication between agents
     bytes_per_pixel = 3  # RGB, uint8
@@ -139,7 +141,7 @@ def main():
         agent_keys.remove("agent_1")
         displayed_agents_list = random.sample(agent_keys, 4)
         displayed_agents_dict = {}
-        agent_colour = [(0, 255, 0), (0, 255, 255), (0, 0, 255), (255, 0, 255)]
+        agent_colour = [(0, 255, 255), (0, 0, 255), (255, 100, 0), (255, 0, 255)]
         for agent, colour in zip(displayed_agents_list, agent_colour):
             displayed_agents_dict[agent] = colour
 
@@ -243,11 +245,11 @@ def main():
         for i in range(1, args.no_of_agents + 1):
             agent_key = f"agent_{i}"
             if agent_key == "agent_1":
-                colour = (255, 165, 0)
+                colour = agent_1_colour
             elif agent_key in displayed_agents_dict:
                 colour = displayed_agents_dict[agent_key]
             else:
-                colour = (255, 0, 0)
+                colour = default_agent_colour
             agents[agent_key].draw(screen, scale, window_w * (1.0 / 4.0), colour)
 
         # 3rd column - Confidence Matrix
@@ -266,13 +268,13 @@ def main():
 
         # 4th column - Prediction
         # Legend
-        pygame.draw.rect(screen, (255, 165, 0), pygame.Rect(
+        pygame.draw.rect(screen, agent_1_colour, pygame.Rect(
                 window_w * (3.0 / 4.0) + x_offset,
                 10.0,
                 legend_size, legend_size
             )
         )
-        agent_policy = agents["agent_1"].get_policy()
+        # agent_policy = agents["agent_1"].get_policy()
         text_surface = window_font.render("Agent 1's Prediction", False, (0, 0, 0))
         # text_surface = window_font.render(f"Agent 1's Prediction, policy: {agent_policy}", False, (0, 0, 0))
         screen.blit(text_surface, (window_w * (3.0 / 4.0) + 2 * x_offset + legend_size, 0))
