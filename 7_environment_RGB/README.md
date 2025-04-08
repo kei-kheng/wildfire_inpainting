@@ -28,7 +28,7 @@ and are able to communicate with agents within its communication range, exchangi
 
 **Example**
 ```
-python main.py --img_scaled_dim 320 --model_path models/test8/generator.pth --no_of_agents 20 --agent_patch_size 25 --agent_comm_range 30 --max_payload_size 270 --agent_confidence_reception 0.6 --agent_confidence_decay 0.001 --agent_confidence_threshold 0.15 --agent_policy random --log_comm --steps 10000 output_dir test
+python main.py --img_scaled_dim 320 --model_path models/test8/generator.pth --no_of_agents 20 --agent_patch_size 25 --agent_comm_range 30 --max_payload_size 270 --agent_confidence_reception 0.6 --agent_confidence_decay 0.001 --agent_confidence_threshold 0.15 --agent_policy random --log_comm --steps 10000 --output_dir test
 ```
 
 # Goal
