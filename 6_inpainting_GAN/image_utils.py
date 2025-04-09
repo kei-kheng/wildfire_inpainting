@@ -4,6 +4,7 @@ import random
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 import torch
 import torchvision.transforms as T
@@ -142,162 +143,130 @@ def plot_from_csv_training(output_dir, csv_file="training_log.csv"):
     csv_path = f"results/{output_dir}/{csv_file}"
     df = pd.read_csv(csv_path)
     # Group by epoch, compute average loss per epoch
-    df_avg = df.groupby("Epoch")[["LossD", "LossG", "LossG_recon", "MSE", "PSNR", "SSIM"]].mean()
+    df_avg = df.groupby("Epoch")[["LossD", "LossG", "LossG_recon", "MSE", "PSNR", "SSIM"]].mean().reset_index()
 
-    # Plot LossD and LossG against epoch
+    os.makedirs(f"results/{output_dir}/plots", exist_ok=True)
+
+    metrics = {
+        "LossG_recon": "Reconstruction Loss (LossG_recon)",
+        "MSE": "Mean Squared Error (MSE)",
+        "PSNR": "Peak Signal-to-Noise Ratio (PSNR), dB",
+        "SSIM": "Structural Similarity Index (SSIM)",
+    }
+
+    # Combine LossD and LossG into one long-form DataFrame for Seaborn
+    loss_df = df_avg[["Epoch", "LossD", "LossG"]].melt(id_vars="Epoch", var_name="Loss Type", value_name="Loss")
     plt.figure(figsize=(10, 5))
-    # Syntax: plot(x-axis values, y-axis values, legend label)
-    # 'Epoch' would be the index due to groupby()
-    plt.plot(df_avg.index, df_avg["LossD"], label="Discriminator Loss (LossD)")
-    plt.plot(df_avg.index, df_avg["LossG"], label="Generator Loss (LossG)")
+    sns.lineplot(data=loss_df, x="Epoch", y="Loss", hue="Loss Type", linewidth=2.0)
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
-    plt.title("LossD and LossG per Epoch")
-    plt.legend()
-    plt.grid(True)
-    # Save as PNG
-    plt.savefig(f"results/{output_dir}/lossD_lossG_vs_epoch.png", dpi=300)
-    plt.show()
+    plt.title("Adversarial Losses: Discriminator Loss (LossD) and Generator Loss (LossG) vs Epoch")
+    plt.tight_layout()
+    for ext in ["png", "svg", "pdf"]:
+        plt.savefig(f"results/{output_dir}/plots/LossD_LossG_vs_epoch.{ext}", dpi=300 if ext == "png" else None)
+    plt.close()
 
-    # Plot LossG_recon against epoch
-    plt.figure(figsize=(10, 5))
-    plt.plot(df_avg.index, df_avg["LossG_recon"], label="Reconstruction Loss (LossG_recon)")
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.title("Reconstruction Loss per Epoch")
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(f"results/{output_dir}/lossG_recon_vs_epoch.png", dpi=300)
-    plt.show()
-
-    # Plot MSE against epoch
-    plt.figure(figsize=(10, 5))
-    plt.plot(df_avg.index, df_avg["MSE"], label="Mean Squared Error (MSE)")
-    plt.xlabel("Epoch")
-    plt.ylabel("MSE")
-    plt.title("MSE per Epoch")
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(f"results/{output_dir}/MSE_vs_epoch.png", dpi=300)
-    plt.show()
-
-    # Plot PSNR against epoch
-    plt.figure(figsize=(10, 5))
-    plt.plot(df_avg.index, df_avg["PSNR"], label="Peak Signal to Noise Ratio (PSNR)")
-    plt.xlabel("Epoch")
-    plt.ylabel("PSNR (dB)")
-    plt.title("PSNR per Epoch")
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(f"results/{output_dir}/PSNR_vs_epoch.png", dpi=300)
-    plt.show()
-
-    # Plot SSIM against epoch
-    plt.figure(figsize=(10, 5))
-    plt.plot(df_avg.index, df_avg["SSIM"], label="Structural Similarity Index Measure (SSIM)")
-    plt.xlabel("Epoch")
-    plt.ylabel("SSIM")
-    plt.title("SSIM per Epoch")
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(f"results/{output_dir}/SSIM_vs_epoch.png", dpi=300)
-    plt.show()
+    for key, label in metrics.items():
+        plt.figure(figsize=(10, 5))
+        sns.lineplot(data=df_avg, x="Epoch", y=key, linewidth=2.0)
+        plt.xlabel("Epoch")
+        plt.ylabel(label)
+        plt.title(f"{label} vs Epoch")
+        plt.tight_layout()
+        for ext in ["png", "svg", "pdf"]:
+            plt.savefig(f"results/{output_dir}/plots/{key}_vs_epoch.{ext}", dpi=300 if ext == "png" else None)
+        plt.close()
 
 def plot_from_csv_inferencing(output_dir, csv_file="inference_log.csv"):
     csv_path = f"inference_results/{output_dir}/{csv_file}"
     df = pd.read_csv(csv_path)
+    os.makedirs(f"inference_results/{output_dir}/plots", exist_ok=True)
     # agg(): https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.agg.html
-    grouped = df.groupby("Folder").agg({"MSE": ["min","max","mean"], "PSNR": ["min","max","mean"], "SSIM": ["min","max","mean"]})
-    # Put folder names into a list
-    folder_names = grouped.index.tolist()
-
-    mean_mse = grouped["MSE"]["mean"].values
-    min_mse  = grouped["MSE"]["min"].values
-    max_mse  = grouped["MSE"]["max"].values
-    mean_psnr = grouped["PSNR"]["mean"].values
-    min_psnr  = grouped["PSNR"]["min"].values
-    max_psnr  = grouped["PSNR"]["max"].values
-    mean_ssim = grouped["SSIM"]["mean"].values
-    min_ssim  = grouped["SSIM"]["min"].values
-    max_ssim  = grouped["SSIM"]["max"].values
-
-    # For error bars
-    lower_err_mse = mean_mse - min_mse
-    upper_err_mse = max_mse - mean_mse
-    lower_err_psnr = mean_psnr - min_psnr
-    upper_err_psnr = max_psnr - mean_psnr
-    lower_err_ssim = mean_ssim - min_ssim
-    upper_err_ssim = max_ssim - mean_ssim
-
-    # Make an x-axis index for each folder
-    x_indices = np.arange(len(folder_names))
 
     # MSE
-    plt.figure(figsize=(12, 7.5))
-    plt.bar(
-        x_indices,
-        mean_mse,
-        color='orange',
-        alpha=0.7,
-        yerr=[lower_err_mse, upper_err_mse],
-        capsize=5,
-        align='center'
-    )
-    plt.xticks(x_indices, folder_names)
-    plt.xlabel("Folder")
-    plt.ylabel("MSE")
-    plt.title("MSE by Folder (min, mean, max)")
+    summary = df.groupby("Folder").agg(
+        MSE_mean=("MSE", "mean"),
+        MSE_min=("MSE", "min"),
+        MSE_max=("MSE", "max")
+    ).reset_index()
 
-    plt.savefig(os.path.join(f"inference_results/{output_dir}", "MSE_per_folder.png"), dpi=300)
-    plt.show()
+    # For error bars
+    summary["MSE_err_low"] = summary["MSE_mean"] - summary["MSE_min"]
+    summary["MSE_err_high"] = summary["MSE_max"] - summary["MSE_mean"]
+    plt.figure(figsize=(12, 7.5))
+
+    sns.barplot(
+        data=summary,
+        x="Folder",
+        y="MSE_mean",
+        yerr=[summary["MSE_err_low"], summary["MSE_err_high"]],
+        color="orange",
+        capsize=0.1
+    )
+    plt.xlabel("Folder")
+    plt.ylabel("Mean Squared Error (MSE)")
+    plt.title("MSE by Folder (min, mean, max)")
+    plt.tight_layout()
+    plt.savefig(f"inference_results/{output_dir}/plots/MSE_by_folder.svg")
+    plt.savefig(f"inference_results/{output_dir}/plots/MSE_by_folder.pdf")
+    plt.savefig(f"inference_results/{output_dir}/plots/MSE_by_folder.png", dpi=300)
+    plt.close()
 
     # PSNR
+    summary = df.groupby("Folder").agg(
+        PSNR_mean=("PSNR", "mean"),
+        PSNR_min=("PSNR", "min"),
+        PSNR_max=("PSNR", "max")
+    ).reset_index()
+
+    summary["PSNR_err_low"] = summary["PSNR_mean"] - summary["PSNR_min"]
+    summary["PSNR_err_high"] = summary["PSNR_max"] - summary["PSNR_mean"]
     plt.figure(figsize=(12, 7.5))
-    # plt.bar(): https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.bar.html
-    plt.bar(
-        x_indices,
-        mean_psnr,
-        color='blue',
-        alpha=0.7,
-        yerr=[lower_err_psnr, upper_err_psnr],
-        capsize=5,
-        align='center'
+
+    sns.barplot(
+        data=summary,
+        x="Folder",
+        y="PSNR_mean",
+        yerr=[summary["PSNR_err_low"], summary["PSNR_err_high"]],
+        color="blue",
+        capsize=0.1
     )
-    # plt.xticks(): https://www.geeksforgeeks.org/matplotlib-pyplot-xticks-in-python/
-    plt.xticks(x_indices, folder_names)
     plt.xlabel("Folder")
-    plt.ylabel("PSNR (dB)")
+    plt.ylabel("Peak Signal-to-Noise Ratio (PSNR), dB")
     plt.title("PSNR by Folder (min, mean, max)")
-
-    # Text labels for mean
-    # for i, val in enumerate(mean_psnr):
-    #     plt.text(i + 0.25, val + 0.5, f"{val:.2f}", ha='center', fontsize=9)
-
-    plt.savefig(os.path.join(f"inference_results/{output_dir}", "PSNR_per_folder.png"), dpi=300)
-    plt.show()
+    plt.tight_layout()
+    plt.savefig(f"inference_results/{output_dir}/plots/PSNR_by_folder.svg")
+    plt.savefig(f"inference_results/{output_dir}/plots/PSNR_by_folder.pdf")
+    plt.savefig(f"inference_results/{output_dir}/plots/PSNR_by_folder.png", dpi=300)
+    plt.close()
 
     # SSIM
+    summary = df.groupby("Folder").agg(
+        SSIM_mean=("SSIM", "mean"),
+        SSIM_min=("SSIM", "min"),
+        SSIM_max=("SSIM", "max")
+    ).reset_index()
+
+    summary["SSIM_err_low"] = summary["SSIM_mean"] - summary["SSIM_min"]
+    summary["SSIM_err_high"] = summary["SSIM_max"] - summary["SSIM_mean"]
     plt.figure(figsize=(12, 7.5))
-    plt.bar(
-        x_indices,
-        mean_ssim,
-        color='green',
-        alpha=0.7,
-        yerr=[lower_err_ssim, upper_err_ssim],
-        capsize=5,
-        align='center'
+
+    sns.barplot(
+        data=summary,
+        x="Folder",
+        y="SSIM_mean",
+        yerr=[summary["SSIM_err_low"], summary["SSIM_err_high"]],
+        color="green",
+        capsize=0.1
     )
-    plt.xticks(x_indices, folder_names)
     plt.xlabel("Folder")
-    plt.ylabel("SSIM")
+    plt.ylabel("Mean Squared Error (SSIM)")
     plt.title("SSIM by Folder (min, mean, max)")
-
-    # for i, val in enumerate(mean_ssim):
-    #     plt.text(i + 0.25, val + 0.02, f"{val:.3f}", ha='center', fontsize=9)
-
-    plt.savefig(os.path.join(f"inference_results/{output_dir}", "SSIM_per_folder_bar.png"), dpi=300)
-    plt.show()
-    
+    plt.tight_layout()
+    plt.savefig(f"inference_results/{output_dir}/plots/SSIM_by_folder.svg")
+    plt.savefig(f"inference_results/{output_dir}/plots/SSIM_by_folder.pdf")
+    plt.savefig(f"inference_results/{output_dir}/plots/SSIM_by_folder.png", dpi=300)
+    plt.close()    
     return
 
 

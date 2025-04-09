@@ -131,22 +131,20 @@ def plot_from_csv_training(model_type, output_dir, csv_file="training_log.csv"):
     os.makedirs(f"results/{model_type}/{output_dir}/plots", exist_ok=True)
 
     sns.set(style="whitegrid", font_scale=1.2)
-    metrics = ["MSE", "PSNR", "SSIM"]
-    y_labels = {
-        "MSE": "Mean Squared Error",
-        "PSNR": "Peak Signal-to-Noise Ratio (dB)",
-        "SSIM": "Structural Similarity Index",
+    metrics = {
+        "MSE": "Mean Squared Error (MSE)",
+        "PSNR": "Peak Signal-to-Noise Ratio (PSNR), dB",
+        "SSIM": "Structural Similarity Index (SSIM)",
     }
 
-    for metric in metrics:
+    for key, label in metrics.items():
         plt.figure(figsize=(10, 5))
-        sns.lineplot(x="Epoch", y=metric, data=df_avg, linewidth=2.0)
-        plt.title(f"{metric} per Epoch")
+        sns.lineplot(data=df_avg, x="Epoch", y=key, linewidth=2.0)
         plt.xlabel("Epoch")
-        plt.ylabel(y_labels[metric])
+        plt.ylabel(label)
+        plt.title(f"{label} vs Epoch")
         plt.tight_layout()
 
-        base_path = f"results/{model_type}/{output_dir}/plots/{metric}_vs_epoch"
         for ext in ["png", "svg", "pdf"]:
-            plt.savefig(f"{base_path}.{ext}", dpi=300 if ext == "png" else None)
+            plt.savefig(f"results/{model_type}/{output_dir}/plots/{key}_vs_epoch.{ext}", dpi=300 if ext == "png" else None)
         plt.close()
