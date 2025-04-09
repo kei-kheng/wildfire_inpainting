@@ -129,7 +129,7 @@ def plot_from_csv_training(model_type, output_dir, csv_file="training_log.csv"):
     df_avg = df.groupby("Epoch")[["MSE", "PSNR", "SSIM"]].mean().reset_index()
     os.makedirs(f"results/{model_type}/{output_dir}/plots", exist_ok=True)
 
-    sns.set(style="whitegrid", font_scale=1.2)
+    sns.set_theme(style="whitegrid", font_scale=1.2)
     metrics = {
         "MSE": "Mean Squared Error (MSE)",
         "PSNR": "Peak Signal-to-Noise Ratio (PSNR), dB",
