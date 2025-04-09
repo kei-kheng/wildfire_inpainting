@@ -127,7 +127,6 @@ def plot_from_csv_training(model_type, output_dir, csv_file="training_log.csv"):
     csv_path = f"results/{model_type}/{output_dir}/{csv_file}"
     df = pd.read_csv(csv_path)
     df_avg = df.groupby("Epoch")[["MSE", "PSNR", "SSIM"]].mean().reset_index()
-
     os.makedirs(f"results/{model_type}/{output_dir}/plots", exist_ok=True)
 
     sns.set(style="whitegrid", font_scale=1.2)

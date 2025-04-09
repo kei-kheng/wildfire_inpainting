@@ -181,8 +181,8 @@ def plot_from_csv_inferencing(output_dir, csv_file="inference_log.csv"):
     csv_path = f"inference_results/{output_dir}/{csv_file}"
     df = pd.read_csv(csv_path)
     os.makedirs(f"inference_results/{output_dir}/plots", exist_ok=True)
+    sns.set_theme(style="whitegrid", font_scale=1.2)
     # agg(): https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.agg.html
-
     # MSE
     summary = df.groupby("Folder").agg(
         MSE_mean=("MSE", "mean"),

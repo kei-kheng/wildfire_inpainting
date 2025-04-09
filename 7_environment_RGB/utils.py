@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import torchvision.transforms as T
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 from PIL import Image
 from skimage.metrics import structural_similarity as SSIM
@@ -110,44 +111,27 @@ def cal_SSIM(composite_image, ground_truth, win_size=7):
 def plot_from_csv(output_dir, csv_file="log.csv"):
     csv_path = f"results/{output_dir}/{csv_file}"
     df = pd.read_csv(csv_path)
+    os.makedirs(f"results/{output_dir}/plots", exist_ok=True)
 
-    # MSE
-    plt.figure(figsize=(8,5))
-    plt.plot(df["Step"], df["MSE"], color='orange', label="MSE")
-    plt.xlabel("Step")
-    plt.ylabel("MSE")
-    plt.title("MSE over steps")
-    plt.grid(True)
-    plt.savefig(f"results/{output_dir}/MSE_vs_step.png", dpi=300)
-    plt.show()
+    sns.set_theme(style="whitegrid", font_scale=1.2)
 
-    # PSNR
-    plt.figure(figsize=(8,5))
-    plt.plot(df["Step"], df["PSNR"], color='blue', label="PSNR")
-    plt.xlabel("Step")
-    plt.ylabel("PSNR (dB)")
-    plt.title("PSNR over steps")
-    plt.grid(True)
-    plt.savefig(f"results/{output_dir}/PSNR_vs_step.png", dpi=300)
-    plt.show()
+    plot_vars = {
+        "MSE": "Mean Squared Error (MSE)",
+        "PSNR": "Peak Signal-to-Noise Ratio (PSNR), dB",
+        "SSIM": "Structural Similarity Index (SSIM)",
+        "Percentage Explored": "Percentage Explored (%)"
+    }
 
-    # SSIM
-    plt.figure(figsize=(8,5))
-    plt.plot(df["Step"], df["SSIM"], label="SSIM", color="green")
-    plt.xlabel("Step")
-    plt.ylabel("SSIM")
-    plt.title("SSIM over steps")
-    plt.grid(True)
-    plt.savefig(f"results/{output_dir}/SSIM_vs_step.png", dpi=300)
-    plt.show()
+    for key, label in plot_vars.items():
+        plt.figure(figsize=(8, 5))
+        sns.lineplot(data=df, x="Step", y=key, linewidth=2.0)
+        plt.xlabel("Step")
+        plt.ylabel(label)
+        plt.title(f"{label} vs Step")
+        plt.tight_layout()
 
-    # Percentage Explored
-    plt.figure(figsize=(8,5))
-    plt.plot(df["Step"], df["Percentage Explored"], label="Percentage Explored", color="purple")
-    plt.xlabel("Step")
-    plt.ylabel("Percentage Explored (%)")
-    plt.title("Percentage explored over steps")
-    plt.grid(True)
-    plt.savefig(f"results/{output_dir}/percentage_explored_vs_step.png", dpi=300)
-    plt.show()
+        for ext in ["png", "svg", "pdf"]:
+            plt.savefig(f"results/{output_dir}/plots/{key.replace(' ', '_')}_vs_step.{ext}", dpi=300 if ext == "png" else None)
+        plt.close()
+    
     return
