@@ -145,7 +145,6 @@ def plot_from_csv_training(output_dir, csv_file="training_log.csv"):
     # Group by epoch, compute average loss per epoch
     df_avg = df.groupby("Epoch")[["LossD", "LossG", "LossG_recon", "MSE", "PSNR", "SSIM"]].mean().reset_index()
     os.makedirs(f"results/{output_dir}/plots", exist_ok=True)
-
     sns.set_theme(style="whitegrid", font_scale=1.2)
 
     metrics = {

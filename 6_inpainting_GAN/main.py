@@ -56,9 +56,7 @@ def main():
             for key, value in config_args.items():
                 setattr(args, key, value)
 
-    os.makedirs(f"results/{args.output_dir}/real", exist_ok=True)
-    os.makedirs(f"results/{args.output_dir}/masked", exist_ok=True)
-    os.makedirs(f"results/{args.output_dir}/recon", exist_ok=True)
+    os.makedirs(f"results/{args.output_dir}/images", exist_ok=True)
     os.makedirs(f"models/{args.output_dir}", exist_ok=True)
 
     # Create/overwrite CSV file
@@ -213,17 +211,29 @@ def main():
             sample_real = real_imgs[: args.num_show].cpu()
             sample_masked = masked_imgs[: args.num_show].cpu()
             sample_comp = comp[: args.num_show].cpu()
+            
+            # A more convenient way of visualization compared to matplotlib
+            # Concatenate tensors along first dimension
+            row = torch.cat(
+                [sample_real[i].unsqueeze(0) for i in range(args.num_show)]
+                + [sample_masked[i].unsqueeze(0) for i in range(args.num_show)]
+                + [sample_comp[i].unsqueeze(0) for i in range(args.num_show)],
+                dim=0,
+            )
 
-        # A more convenient way of visualization compared to matplotlib
-        vutils.save_image(
-            sample_real, f"results/{args.output_dir}/real/epoch_{epoch+1}.png", normalize=True
-        )
-        vutils.save_image(
-            sample_masked, f"results/{args.output_dir}/masked/epoch_{epoch+1}.png", normalize=True
-        )
-        vutils.save_image(
-            sample_comp, f"results/{args.output_dir}/recon/epoch_{epoch+1}.png", normalize=True
-        )
+            '''
+            Tested, 1st argument:
+            '-1': Placeholder for reshaping (batch)
+            'sample_real.shape[1:]': Gives (C, H, W)
+            '*sample_real.shape[1:]' Gives C, H, W (unpacked)
+            '''
+            img = vutils.make_grid(
+                row.view(-1, *sample_real.shape[1:]), nrow=args.num_show, normalize=True
+            )
+            vutils.save_image(
+                img,
+                f"results/{args.output_dir}/images/epoch_{epoch+1}.png",
+            )
 
     # Save models - discriminator is usally not needed once training is complete
     torch.save(generator.state_dict(), f"models/{args.output_dir}/generator.pth")
