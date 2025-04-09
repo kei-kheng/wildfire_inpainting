@@ -1,5 +1,6 @@
 # Libraries
 import os
+import yaml
 import argparse
 import csv
 import numpy as np
@@ -34,6 +35,7 @@ def weights_init(layer):
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--yaml_path", type=str)
     parser.add_argument("--data_dir", type=str, default="dataset/IR_images")
     parser.add_argument("--folders", nargs="+", default=["5"])
     parser.add_argument("--img_scaled_dim", type=int, default=320)  # 1704 x 1280
@@ -47,6 +49,12 @@ def main():
     parser.add_argument("--output_dir", type=str, default="default_folder")
     parser.add_argument("--num_show", type=int, default=5)
     args = parser.parse_args()
+
+    if args.yaml_path:
+        with open(args.yaml_path, "r") as f:
+            config_args = yaml.safe_load(f)
+            for key, value in config_args.items():
+                setattr(args, key, value)
 
     os.makedirs(f"results/{args.output_dir}/real", exist_ok=True)
     os.makedirs(f"results/{args.output_dir}/masked", exist_ok=True)

@@ -10,6 +10,7 @@ and are able to communicate with agents within its communication range, exchangi
 # Usage - main.py
 ## Parameters
 ```
+--yaml_path                    (Optional) Path to a YAML file specifying simulation parameters
 --img_scaled_dim               The dimension of the longest side of the image after scaling
 --model_path                   Path to load trained model from
 --no_of_agents                 Number of agents to be deployed in environment, must be either 1 or >= 5

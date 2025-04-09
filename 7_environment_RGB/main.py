@@ -1,5 +1,6 @@
 # Import libraries
 import os
+import yaml
 import argparse
 import csv
 import random
@@ -24,6 +25,7 @@ from utils import (
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--yaml_path", type=str)
     parser.add_argument("--img_scaled_dim", type=int, default=320)
     parser.add_argument("--model_path", type=str, default="models/test8/generator.pth")
     parser.add_argument("--no_of_agents", type=int, default=20)
@@ -42,6 +44,12 @@ def main():
     parser.add_argument("--steps", type=int, default=10000)
     parser.add_argument("--output_dir", type=str, default="test")
     args = parser.parse_args()
+
+    if args.yaml_path:
+        with open(args.yaml_path, "r") as f:
+            config_args = yaml.safe_load(f)
+            for key, value in config_args.items():
+                setattr(args, key, value)
 
     env_img_1_path, env_img_2_path = random_environment("env_imgs", sample=2)
 

@@ -11,6 +11,7 @@ This code implements a Generative Adversarial Network (GAN) to perform inpaintin
 # Usage - main.py
 ## Parameters
 ```
+--yaml_path         (Optional) Path to a YAML file specifying simulation parameters
 --data_dir          Base directory containing folders of images used to train the GAN
 --folders           List of subfolder names to load training dataset from
 --img_scaled_dim    The dimension of the longest side of the image after scaling

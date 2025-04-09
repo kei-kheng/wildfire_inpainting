@@ -9,7 +9,7 @@ Trains and compares 3 different inpainting models:
 # Usage - main.py
 ## Parameters
 ```
---yaml_path    Path of config.yaml (if existent)
+--yaml_path    (Optional) Path to a YAML file specifying simulation parameters
 --data_dir     Directory to load training images from
 --model_type   Specifies type of model to train, takes values within set ["CAE", "PCAE", "GAN"]
 --output_dir   Directory to store results
