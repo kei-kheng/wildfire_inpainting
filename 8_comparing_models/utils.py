@@ -2,6 +2,7 @@ import os
 import glob
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
 
 import torch
@@ -125,36 +126,27 @@ def cal_SSIM(composite_image, ground_truth, mask):
 def plot_from_csv_training(model_type, output_dir, csv_file="training_log.csv"):
     csv_path = f"results/{model_type}/{output_dir}/{csv_file}"
     df = pd.read_csv(csv_path)
-    df_avg = df.groupby("Epoch")[["MSE", "PSNR", "SSIM"]].mean()
+    df_avg = df.groupby("Epoch")[["MSE", "PSNR", "SSIM"]].mean().reset_index()
 
-    plt.figure(figsize=(10, 5))
-    plt.plot(df_avg.index, df_avg["MSE"], label="Mean Squared Error (MSE)")
-    plt.xlabel("Epoch")
-    plt.ylabel("MSE")
-    plt.title("MSE per Epoch")
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(f"results/{model_type}/{output_dir}/MSE_vs_epoch.png", dpi=300)
-    plt.show()
+    os.makedirs(f"results/{model_type}/{output_dir}/plots", exist_ok=True)
 
-    plt.figure(figsize=(10, 5))
-    plt.plot(df_avg.index, df_avg["PSNR"], label="Peak Signal to Noise Ratio (PSNR)")
-    plt.xlabel("Epoch")
-    plt.ylabel("PSNR (dB)")
-    plt.title("PSNR per Epoch")
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(f"results/{model_type}/{output_dir}/PSNR_vs_epoch.png", dpi=300)
-    plt.show()
+    sns.set(style="whitegrid", font_scale=1.2)
+    metrics = ["MSE", "PSNR", "SSIM"]
+    y_labels = {
+        "MSE": "Mean Squared Error",
+        "PSNR": "Peak Signal-to-Noise Ratio (dB)",
+        "SSIM": "Structural Similarity Index",
+    }
 
-    plt.figure(figsize=(10, 5))
-    plt.plot(
-        df_avg.index, df_avg["SSIM"], label="Structural Similarity Index Measure (SSIM)"
-    )
-    plt.xlabel("Epoch")
-    plt.ylabel("SSIM")
-    plt.title("SSIM per Epoch")
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(f"results/{model_type}/{output_dir}/SSIM_vs_epoch.png", dpi=300)
-    plt.show()
+    for metric in metrics:
+        plt.figure(figsize=(10, 5))
+        sns.lineplot(x="Epoch", y=metric, data=df_avg, linewidth=2.0)
+        plt.title(f"{metric} per Epoch")
+        plt.xlabel("Epoch")
+        plt.ylabel(y_labels[metric])
+        plt.tight_layout()
+
+        base_path = f"results/{model_type}/{output_dir}/plots/{metric}_vs_epoch"
+        for ext in ["png", "svg", "pdf"]:
+            plt.savefig(f"{base_path}.{ext}", dpi=300 if ext == "png" else None)
+        plt.close()
