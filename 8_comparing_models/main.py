@@ -211,6 +211,14 @@ def main():
                 f"results/{args.model_type}/{args.output_dir}/images/epoch_{epoch+1}.png",
             )
 
+    # Save models
+    if args.model_type == "CAE":
+        torch.save(model.state_dict(), f"results/{args.model_type}/{args.output_dir}/cae.pth")
+    elif args.model_type == "PCAE":
+        torch.save(model.state_dict(), f"results/{args.model_type}/{args.output_dir}/pcae.pth")
+    elif args.model_type == "GAN":
+        torch.save(generator.state_dict(), f"results/{args.model_type}/{args.output_dir}/generator.pth")
+
     # Plot graphs from CSV
     plot_from_csv_training(args.model_type, args.output_dir)
     print("Plotted graphs from CSV")
