@@ -1,0 +1,6 @@
+data_dir: dataset
+model_type: CAE
+output_dir: run1
+coverage: 0.10
+epochs: 50
+batch_size: 16
