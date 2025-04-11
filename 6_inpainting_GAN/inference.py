@@ -1,4 +1,5 @@
 import os
+import yaml
 import argparse
 import csv
 
@@ -20,6 +21,7 @@ from image_utils import (
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--yaml_path", type=str)
     parser.add_argument("--data_dir", type=str, default="dataset/inference")  
     parser.add_argument("--folders", nargs="+", default=["3"]) 
     parser.add_argument("--model_path", type=str, default="models/test/generator.pth")
@@ -29,6 +31,12 @@ def main():
     parser.add_argument("--output_dir", type=str, default="test")
     parser.add_argument("--num_show", type=int, default=5)
     args = parser.parse_args()
+
+    if args.yaml_path:
+        with open(args.yaml_path, "r") as f:
+            config_args = yaml.safe_load(f)
+            for key, value in config_args.items():
+                setattr(args, key, value)
 
     os.makedirs(f"inference_results/{args.output_dir}", exist_ok=True)
 

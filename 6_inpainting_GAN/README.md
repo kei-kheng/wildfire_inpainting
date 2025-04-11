@@ -33,6 +33,7 @@ python main.py --data_dir dataset/IR_images --folders 3 5 6 7 --img_scaled_dim 3
 # Usage - inference.py
 ## Parameters
 ```
+--yaml_path         (Optional) Path to a YAML file specifying simulation parameters
 --data_dir          Base directory containing folders of images used to validate the GAN
 --folders           List of subfolder names to load inference dataset from
 --model_path        Directory to load trained generator from
