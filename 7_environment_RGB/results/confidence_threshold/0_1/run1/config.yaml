@@ -1,0 +1,14 @@
+img_scaled_dim: 320
+model_path: models/150_epochs/run1/generator.pth
+no_of_agents: 20
+agent_patch_size: 25
+agent_comm_range: 30
+max_payload_size: 90
+agent_compress: true
+agent_confidence_reception: 0.6
+agent_confidence_decay: 0.01
+agent_confidence_threshold: 0.1
+agent_policy: random
+log_comm: False
+steps: 1000
+output_dir: confidence_threshold/0_1/run1
