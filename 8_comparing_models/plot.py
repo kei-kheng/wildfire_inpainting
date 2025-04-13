@@ -10,7 +10,6 @@ METRICS = ["MSE", "PSNR", "SSIM"]
 
 # Collect all results
 all_data = []
-
 for model in MODELS:
     for run in RUNS:
         csv_path = os.path.join(BASE_DIR, model, run, "training_log.csv")
@@ -36,7 +35,7 @@ grouped = (
 )
 
 # Plot using seaborn
-sns.set(style="whitegrid", font_scale=1.2)
+sns.set_theme(style="whitegrid", font_scale=1.2)
 fig, axes = plt.subplots(1, 3, figsize=(18, 5), sharex=True)
 
 for i, metric in enumerate(METRICS):
