@@ -1,0 +1,18 @@
+Initial environment: env_imgs\28\28_040.png
+Switched environment: env_imgs\23\23_030.png
+--yaml_path results/confidence_threshold/0_1/run3/config.yaml
+--img_scaled_dim 320
+--model_path models/150_epochs/run1/generator.pth
+--no_of_agents 20
+--agent_patch_size 25
+--agent_comm_range 30
+--max_payload_size 90
+--agent_compress True
+--agent_confidence_reception 0.6
+--agent_confidence_decay 0.01
+--agent_confidence_threshold 0.1
+--agent_policy random
+--agent_sample_points 4
+--log_comm False
+--steps 1000
+--output_dir confidence_threshold/0_1/run3
