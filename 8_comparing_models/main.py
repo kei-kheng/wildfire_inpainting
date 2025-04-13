@@ -64,13 +64,17 @@ def main():
             f.write(f"--{arg_key} {arg_value}\n")
     print(f"Wrote training conditions to: {txt_path}")
 
-    transform = T.Compose(
-        [
+    if args.model_type in ["CAE", "PCAE"]:
+        transform = T.Compose([
+            ImageResize(scaled_dim=128),
+            T.ToTensor(),  # To [0, 1]: CAE and PCAE has sigmoid as output layer's activation function
+        ])
+    elif args.model_type == "GAN":
+        transform = T.Compose([
             ImageResize(scaled_dim=128),
             T.ToTensor(),
-            T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-        ]
-    )
+            T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)), # [0, 1] -> [-1, 1]: Context Encoder has tanh as output layer's activation function
+        ])
 
     dataset = EllipseDataset(args.data_dir, transform=transform)
     print("Dataset length:", len(dataset))
