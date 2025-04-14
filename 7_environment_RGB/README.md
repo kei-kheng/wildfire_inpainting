@@ -21,6 +21,7 @@ and are able to communicate with agents within its communication range, exchangi
 --agent_patch_size             Size of patch observable by agent in pixels
 --agent_comm_range             Communication range of agents in pixels based on the Euclidean/Pythagorean distance
 --max_payload_size             Maximum payload size in pixels
+--noise                        Type of noise added to model's input. Choices: none, gaussian, salt_and_pepper. Default is none.
 --agent_compress               Flag to use FlatBuffers to compress agent payloads before sending
 --agent_confidence_reception   Confidence value assigned to received payload (want received information to stay long enough to be useful)
 --agent_confidence_decay       Rate at which confidence decays, calculated as new_confidence = old_confidence - agent_confidence_decay at each time step

@@ -5,6 +5,7 @@ import os
 import pygame
 import numpy as np
 import pandas as pd
+import torch
 import torchvision.transforms as T
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -90,6 +91,33 @@ def get_size(obj, seen=None):
     elif hasattr(obj, '__iter__') and not isinstance(obj, (str, bytes, bytearray)):
         size += sum([get_size(i, seen) for i in obj])
     return size
+
+# Tensor shape: (C, H, W), in range [-1, 1]
+# Reference: https://pytorch.org/docs/stable/generated/torch.randn_like.html (Gaussian, mean = 0, var = 1)
+# 'std' to scale the noise to the desired standard deviation
+def add_gaussian_noise_tensor(tensor, std=0.05):
+    noise = torch.randn_like(tensor) * std
+    noisy = tensor + noise
+    return torch.clamp(noisy, -1.0, 1.0)
+
+# Salt-and-pepper noise with 5% coverage
+def add_salt_and_pepper_noise_tensor(tensor, amount=0.05):
+    noisy = tensor.clone()
+    # numel() returns total number of elements in input tensor, e.g., 76800 (320 * 240)
+    # Elements per channel
+    total_pixels = tensor.numel() // tensor.shape[0]
+    # num_salt == num_pepper, num_pepper variable not needed
+    num_salt = int(amount * total_pixels / 2)
+
+    # Random locations where noise will be added
+    coords = torch.randint(0, total_pixels, (2 * num_salt, ))
+
+    for channel in range(tensor.shape[0]):
+        flat = noisy[channel].flatten()
+        flat[coords[:num_salt]] = 1.0  # Salt -> White, RGB (255, 255, 255) when normalised later
+        flat[coords[num_salt:]] = -1.0  # Pepper -> Black when normalised later
+
+    return torch.clamp(noisy, -1.0, 1.0)
 
 def cal_MSE(composite_image, ground_truth):
     MSE = np.mean((composite_image - ground_truth)**2)

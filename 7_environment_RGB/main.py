@@ -16,6 +16,8 @@ from utils import (
     random_environment,
     convert_img_to_, 
     nparray_to_surface,
+    add_gaussian_noise_tensor,
+    add_salt_and_pepper_noise_tensor,
     get_size, 
     cal_MSE,
     cal_PSNR,
@@ -38,6 +40,7 @@ def main():
     parser.add_argument("--agent_comm_range", type=int, default=30)
     parser.add_argument("--max_payload_size", type=int, default=270)
     # -------------------------------------------------------------
+    parser.add_argument("--noise", type=str, choices=["none", "gaussian", "salt_and_pepper"], default="none")
     parser.add_argument("--agent_compress", action="store_true")
     parser.add_argument("--agent_confidence_reception", type=float, default=0.6)
     parser.add_argument("--agent_confidence_decay", type=float, default=0.01)
@@ -45,7 +48,7 @@ def main():
     parser.add_argument("--agent_policy", type=str, default="random")
     parser.add_argument("--agent_sample_points", type=int, default=4)
     parser.add_argument("--log_comm", action="store_true")
-    parser.add_argument("--steps", type=int, default=10000)
+    parser.add_argument("--steps", type=int, default=1000)
     parser.add_argument("--output_dir", type=str, default="test")
     args = parser.parse_args()
 
@@ -314,6 +317,12 @@ def main():
         exp_array = agents["agent_1"].get_explored()
         mask_3ch = np.repeat(exp_array[np.newaxis, :, :], 3, axis=0)  # Derive a 3-channeled mask from 'exp_array'
         mask_tensor = torch.from_numpy(mask_3ch)  # Convert to tensor, shape -> (C, H, W)
+
+        if args.noise == "gaussian":
+            obs_tensor = add_gaussian_noise_tensor(obs_tensor)
+        elif args.noise == "salt_and_pepper":
+            obs_tensor = add_salt_and_pepper_noise_tensor(obs_tensor)
+        
         # masked_env_tensor = (env_tensor * mask_tensor).to(device)  # For static environment
         masked_env_tensor = (obs_tensor * mask_tensor).to(device)
 
@@ -365,6 +374,12 @@ def main():
                 d_observed_array = agents[d_agent_key].get_observation()
                 d_obs_tensor = torch.from_numpy(d_observed_array).permute(2, 0, 1).float()
                 d_obs_tensor = (d_obs_tensor / 255.0 - 0.5) * 2.0
+
+                if args.noise == "gaussian":
+                    d_obs_tensor = add_gaussian_noise_tensor(d_obs_tensor)
+                elif args.noise == "salt_and_pepper":
+                    d_obs_tensor = add_salt_and_pepper_noise_tensor(d_obs_tensor)
+
                 d_mask = np.repeat(d_explored[np.newaxis, :, :], 3, axis=0)
                 d_mask_tensor = torch.from_numpy(d_mask)
                 # d_masked_env_tensor = (env_tensor * d_mask_tensor).to(device) # For static environment
