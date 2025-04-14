@@ -3,13 +3,13 @@ env1_rotate: 0
 env2_path: env_imgs\6\6_060.png
 env2_rotate: 180
 model_path: models/150_epochs/run1/generator.pth
-
-no_of_agents: 1
-
+no_of_agents: 20
 agent_compress: true
 agent_confidence_reception: 0.6
 agent_confidence_decay: 0.004
-agent_confidence_threshold: 0.2
+
+agent_confidence_threshold: 0.3
+
 log_comm: False
 
-output_dir: no_of_agents/1/run1
+output_dir: confidence_threshold/0_3/run5
