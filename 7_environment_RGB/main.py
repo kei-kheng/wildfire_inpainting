@@ -26,8 +26,12 @@ from utils import (
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--yaml_path", type=str)
+    parser.add_argument("--env1_path", type=str, default=None)
+    parser.add_argument("--env1_rotate", type=int, default=None)
+    parser.add_argument("--env2_path", type=str, default=None)
+    parser.add_argument("--env2_rotate", type=int, default=None)
     parser.add_argument("--img_scaled_dim", type=int, default=320)
-    parser.add_argument("--model_path", type=str, default="models/test8/generator.pth")
+    parser.add_argument("--model_path", type=str, default="models/preliminary_tests/test8/generator.pth")
     parser.add_argument("--no_of_agents", type=int, default=20)
     # -------------------- Depends on hardware --------------------
     parser.add_argument("--agent_patch_size", type=int, default=25)
@@ -51,7 +55,15 @@ def main():
             for key, value in config_args.items():
                 setattr(args, key, value)
 
-    env_img_1_path, env_img_2_path = random_environment("env_imgs", sample=2)
+    # Choose 2 random environment images unless specified
+    env_img_1_path, env_img_2_path = (
+        (args.env1_path, args.env2_path) if args.env1_path and args.env2_path 
+        else random_environment("env_imgs", sample=2)
+    )
+
+    # Use specified rotation if provided, otherwise random choice
+    random_angle_1 = args.env1_rotate if args.env1_rotate is not None else random.choice((0, 90, 180, 270))
+    random_angle_2 = args.env2_rotate if args.env2_rotate is not None else random.choice((0, 90, 180, 270))
 
     os.makedirs(f"results/{args.output_dir}", exist_ok=True)
     # Option to log communication
@@ -64,8 +76,8 @@ def main():
     # Log simulation conditions
     sim_log_path = f"results/{args.output_dir}/simulation_conditions.txt"
     with open(sim_log_path, "w") as f:
-        f.write(f"Initial environment: {env_img_1_path}\n")
-        f.write(f"Switched environment: {env_img_2_path}\n")
+        f.write(f"Initial environment: {env_img_1_path} with {random_angle_1} degree rotation\n")
+        f.write(f"Switched environment: {env_img_2_path} with {random_angle_2} degree rotation\n")
         for arg_key, arg_value in vars(args).items():
             f.write(f"--{arg_key} {arg_value}\n")
     print(f"Wrote simulation conditions to: {sim_log_path}")
@@ -94,8 +106,6 @@ def main():
     print(f"Loaded inference model from '{args.model_path}'")
 
     # Convert environment image to NumPy array with shape (H, W, 3), random rotation applied
-    random_angle_1 = random.choice((0, 90, 180, 270))
-    random_angle_2 = random.choice((0, 90, 180, 270))
     env_array = convert_img_to_(env_img_1_path, args.img_scaled_dim, output="nparray", rotation=random_angle_1)
     env_surface = nparray_to_surface(env_array, scale)
     # Convert to tensor and normalize

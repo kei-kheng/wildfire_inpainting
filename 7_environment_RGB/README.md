@@ -8,9 +8,13 @@ and are able to communicate with agents within its communication range, exchangi
 **Evaluation metrics:** MSE, PSNR, SSIM. Calculated over **entire image** from the perspective of `agent_1`.
 
 # Usage - main.py
-## Parameters
+## Optional Parameters
 ```
---yaml_path                    (Optional) Path to a YAML file specifying simulation parameters
+--yaml_path                    Path to a YAML file specifying simulation parameters
+--env1_path                    Path to the first environment image. If not provided, one will be sampled randomly.
+--env2_path                    Path to the second environment image (used mid-simulation). Falls back to random if not specified.
+--env1_rotate                  Rotation angle for the first image in degrees. One of {0, 90, 180, 270}. Defaults to random if not specified.
+--env2_rotate                  Rotation angle for the second image. Same options as env1_rotate.
 --img_scaled_dim               The dimension of the longest side of the image after scaling
 --model_path                   Path to load trained model from
 --no_of_agents                 Number of agents to be deployed in environment, must be either 1 or >= 5
