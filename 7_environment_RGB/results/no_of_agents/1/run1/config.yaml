@@ -1,4 +1,8 @@
 img_scaled_dim: 320
+env1_path: env_imgs\33\33_040.png
+env1_rotate: 0
+env2_path: env_imgs\6\6_060.png
+env2_rotate: 180
 model_path: models/150_epochs/run1/generator.pth
 no_of_agents: 1
 agent_patch_size: 25
