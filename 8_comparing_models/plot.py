@@ -14,6 +14,7 @@ METRICS = {
 # Constants for plotting
 CONSTS = {
     "FONT_SIZE": 12,
+    "FONT_SCALE": 2.0,
     "WIDTH": 10,
     "HEIGHT": 8,
     "DPI": 300,
@@ -54,7 +55,7 @@ def plot_median_metrics(df, output_dir):
     # Group by "Model" and "Epoch". For each metric, compute median along these two axes.
     median_df = df.groupby(["Model", "Epoch"])[list(METRICS.keys())].median().reset_index()
 
-    sns.set_theme(style="whitegrid", font_scale=1.2)
+    sns.set_theme(style="whitegrid", font_scale=CONSTS["FONT_SCALE"])
 
     for metric, label in METRICS.items():
         plt.figure(figsize=(CONSTS["WIDTH"], CONSTS["HEIGHT"]))
@@ -109,7 +110,7 @@ def main():
     models = ["CAE", "PCAE", "GAN"]
     df = collect_data(args.base_dir, models, args.num_runs)
     plot_median_metrics(df, args.output_dir)
-    calculate_variance(df, args.output_dir)
+    # calculate_variance(df, args.output_dir)
     print("Plotted graphs from CSV")
 
 if __name__ == "__main__":
