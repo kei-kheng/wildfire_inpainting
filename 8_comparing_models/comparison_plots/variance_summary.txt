@@ -1,0 +1,15 @@
+CAE:
+  MSE variance -> Min: 0.0000, Max: 0.0001, Mean: 0.0000
+  PSNR variance -> Min: 0.0186, Max: 0.2024, Mean: 0.0840
+  SSIM variance -> Min: 0.0001, Max: 0.0003, Mean: 0.0002
+
+PCAE:
+  MSE variance -> Min: 0.0000, Max: 0.0001, Mean: 0.0000
+  PSNR variance -> Min: 0.0096, Max: 0.0896, Mean: 0.0255
+  SSIM variance -> Min: 0.0001, Max: 0.0002, Mean: 0.0001
+
+GAN:
+  MSE variance -> Min: 0.0000, Max: 0.0010, Mean: 0.0001
+  PSNR variance -> Min: 0.1357, Max: 1.5104, Mean: 0.5202
+  SSIM variance -> Min: 0.0000, Max: 0.0006, Mean: 0.0001
+

@@ -1,5 +1,6 @@
 import os
 import argparse
+import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -14,7 +15,7 @@ METRICS = {
 CONSTS = {
     "FONT_SIZE": 12,
     "WIDTH": 10,
-    "HEIGHT": 5,
+    "HEIGHT": 8,
     "DPI": 300,
     "POINT_SIZE": 3,
     "LINE_WIDTH": 2.0,
@@ -70,6 +71,34 @@ def plot_median_metrics(df, output_dir):
 
         plt.close()
 
+def calculate_variance(df, output_dir, metrics=["MSE", "PSNR", "SSIM"]):
+    variance_summary = {}
+    for model in df["Model"].unique():
+        model_df = df[df["Model"] == model]
+        grouped = model_df.groupby(["Run", "Epoch"])[metrics].mean().reset_index()
+
+        for metric in metrics:
+            pivot = grouped.pivot(index="Epoch", columns="Run", values=metric)
+            if pivot.shape[1] < 2:
+                continue  # Skip if less than 2 runs
+            epoch_wise_var = pivot.var(axis=1)
+            variance_summary.setdefault(model, {})[metric] = {
+                "min": float(epoch_wise_var.min()),
+                "max": float(epoch_wise_var.max()),
+                "mean": float(epoch_wise_var.mean())
+            }
+
+    # Write to file
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, "variance_summary.txt")
+    with open(output_path, "w") as f:
+        for model in variance_summary:
+            f.write(f"{model}:\n")
+            for metric, stats in variance_summary[model].items():
+                f.write(f"  {metric} variance -> Min: {stats['min']:.4f}, Max: {stats['max']:.4f}, Mean: {stats['mean']:.4f}\n")
+            f.write("\n")
+    print(f"Variance summary written to: {output_path}")
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--base_dir", type=str, default="results")
@@ -80,6 +109,7 @@ def main():
     models = ["CAE", "PCAE", "GAN"]
     df = collect_data(args.base_dir, models, args.num_runs)
     plot_median_metrics(df, args.output_dir)
+    calculate_variance(df, args.output_dir)
     print("Plotted graphs from CSV")
 
 if __name__ == "__main__":
