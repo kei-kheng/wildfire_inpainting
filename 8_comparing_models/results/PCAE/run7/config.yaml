@@ -1,0 +1,6 @@
+data_dir: dataset
+model_type: PCAE
+output_dir: run7
+coverage: 0.15
+epochs: 50
+batch_size: 16
