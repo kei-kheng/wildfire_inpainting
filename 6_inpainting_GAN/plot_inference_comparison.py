@@ -4,6 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+PLOT_STYLE = "box"  # Options: "bar" or "box"
+
 EPOCH_DIRS = ["150_epochs", "200_epochs"]
 RUNS = [f"run{i}" for i in range(1, 6)]
 METRICS = {
@@ -107,15 +109,36 @@ def plot_grouped_bar(summary_df, metric, ylabel):
     fig.tight_layout()
 
     for ext in ["png", "svg", "pdf"]:
-        plt.savefig(os.path.join(OUT_DIR, f"{metric}_comparison.{ext}"), dpi=STYLE["DPI"] if ext == "png" else None)
+        plt.savefig(os.path.join(OUT_DIR, f"{metric}_barplot.{ext}"), dpi=STYLE["DPI"] if ext == "png" else None)
+    plt.close()
+
+# For box plots
+def plot_boxplot(df, metric, ylabel):
+    os.makedirs(OUT_DIR, exist_ok=True)
+    plt.figure(figsize=(STYLE["WIDTH"], STYLE["HEIGHT"]))
+    sns.boxplot(data=df, x="Folder", y=metric, hue="EpochDir")
+    plt.xlabel("Folder")
+    plt.ylabel(ylabel)
+    plt.title(f"{ylabel} by Folder")
+    plt.xticks(rotation=90)
+    plt.legend(title="Epochs")
+    plt.tight_layout()
+
+    for ext in ["png", "svg", "pdf"]:
+        plt.savefig(os.path.join(OUT_DIR, f"{metric}_boxplot.{ext}"))
     plt.close()
 
 def main():
     df_all = pd.concat([load_all_runs(epoch) for epoch in EPOCH_DIRS], ignore_index=True)
 
     for metric, ylabel in METRICS.items():
-        summary = prepare_grouped_data(df_all, metric)
-        plot_grouped_bar(summary, metric, ylabel)
+        if PLOT_STYLE == "bar":
+            summary = prepare_grouped_data(df_all, metric)
+            plot_grouped_bar(summary, metric, ylabel)
+        elif PLOT_STYLE == "box":
+            plot_boxplot(df_all, metric, ylabel)
+        else:
+            raise ValueError("PLOT_STYLE must be either 'bar' or 'box'")
 
     print("Inference comparison plots saved to:", OUT_DIR)
 

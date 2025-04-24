@@ -7,6 +7,8 @@ This code implements a Generative Adversarial Network (GAN) to perform inpaintin
 - `inference.py` loads a trained generator and performs inferencing, on dataset it has never seen during its training phase. It then writes to and plots from a CSV file (PSNR and SSIM against 'folders').
 - `models.py` contains the definition of the sub-models.
 - `image_utils.py` contains functions needed to preprocess the training images, write to & plot from CSVs and calculate losses/evaluation metrics.
+- `plot_200_epochs_runs.py` was used to plot graphs to determine the optimal stopping point for training models (trained 5 models for 200 epochs).
+- `plot_inference_comparison.py` compares the performance of 150-epoch models and 200-epoch models on the 10% validation dataset. Change `PLOT_STYLE` to "box" or "bar" to be able to plot box and bar plots.
 
 # Usage - main.py
 ## Parameters
