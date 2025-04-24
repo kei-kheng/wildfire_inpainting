@@ -18,7 +18,7 @@ and are able to communicate with agents within its communication range, exchangi
 --img_scaled_dim               The dimension of the longest side of the image after scaling
 --model_path                   Path to load trained model from
 --no_of_agents                 Number of agents to be deployed in environment, must be either 1 or >= 5
---agent_patch_size             Size of patch observable by agent in pixels
+--agent_patch_size             Size of patch observable by agent in pixels, e.g., entering 25 results in a 25x25 patch.
 --agent_comm_range             Communication range of agents in pixels based on the Euclidean/Pythagorean distance
 --max_payload_size             Maximum payload size in pixels
 --noise                        Type of noise added to model's input. Choices: none, gaussian, salt_and_pepper. Default is none.
