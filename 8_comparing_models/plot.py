@@ -68,10 +68,21 @@ def plot_median_metrics(df, output_dir):
 
     for metric, label in METRICS.items():
         plt.figure(figsize=(CONSTS["WIDTH"], CONSTS["HEIGHT"]))
-        sns.lineplot(data=median_df, x="Epoch", y=metric, hue="Model")
+
+        for model in df["Model"].unique():
+            model_df = df[df["Model"] == model]
+            pivot = model_df.groupby(["Epoch", "Run"])[metric].mean().unstack()
+            median = pivot.median(axis=1)
+            min_ = pivot.min(axis=1)
+            max_ = pivot.max(axis=1)
+
+            plt.plot(median.index, median.values, label=model)
+            plt.fill_between(median.index, min_, max_, alpha=0.2)
+
         plt.title(f"{label} vs Epoch")
         plt.xlabel("Epoch")
         plt.ylabel(label)
+        plt.legend(title="Model")
         plt.tight_layout()
 
         for ext in ["pdf", "svg", "png"]:
