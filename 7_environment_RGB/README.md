@@ -5,6 +5,8 @@ This code loads two randomly chosen images from the inference dataset as the env
     - `confidence`: Models information decay for agents to adapt to dynamic environment
 and are able to communicate with agents within its communication range, exchanging information. When the size of the payload is limited, agents prioritize transmitting observation with higher confidence values. Agents maintain a confidence matrix that decays **linearly** over time, modeling information freshness in dynamic environments (e.g., changing fire spread). Information below the confidence threshold are phased out. The Pygame window displays 5 agents' prediction based on their respective observations. Screenshots of the window are captured periodically. Simulation conditions are written to a text file and the evaluation metrics are plotted against the simulation time at the end of simulation.
 
+A minimal version that supports only the random walk policy without PyGame visualisation is included: `main_wo_pygame.py`. `plot.py` was used to plot graphs. `STATISTIC` can be changed to "mean" or "median".
+
 **Evaluation metrics:** MSE, PSNR, SSIM. Calculated over **entire image** from the perspective of `agent_1`.
 
 # Usage - main.py
