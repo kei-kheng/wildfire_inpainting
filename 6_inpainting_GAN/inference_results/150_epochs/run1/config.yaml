@@ -1,0 +1,9 @@
+data_dir: dataset/inference
+folders: ['1', '2', '3', '4', '5', '6', '7', '8', '11', '13', '16', '17', '18', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '32', '33', '34']
+img_scaled_dim: 320
+coverage: 0.15
+batch_size: 5
+num_show: 5
+
+model_path: models/150_epochs/run1/generator.pth
+output_dir: inference_results/150_epochs/run1
