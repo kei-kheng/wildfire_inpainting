@@ -13,13 +13,17 @@ METRICS = {
 
 # Constants for plotting
 CONSTS = {
-    "FONT_SIZE": 12,
+    "FONT_SIZE": 12, 
+    "TITLE_SIZE": 40,   
+    "LABEL_SIZE": 20,    
+    "TICK_SIZE": 12,     
+    "LEGEND_SIZE": 14,       
     "FONT_SCALE": 2.0,
     "WIDTH": 10,
     "HEIGHT": 8,
-    "DPI": 300,
     "POINT_SIZE": 3,
     "LINE_WIDTH": 2.0,
+    "DPI": 300,
 }
 
 # Set up plot style
@@ -29,6 +33,11 @@ plt.rcParams.update({
     "figure.dpi": CONSTS["DPI"],
     "lines.markersize": CONSTS["POINT_SIZE"] * 2,
     "lines.linewidth": CONSTS["LINE_WIDTH"],
+    "axes.titlesize": CONSTS["TITLE_SIZE"],
+    "axes.labelsize": CONSTS["LABEL_SIZE"],
+    "xtick.labelsize": CONSTS["TICK_SIZE"],
+    "ytick.labelsize": CONSTS["TICK_SIZE"],
+    "legend.fontsize": CONSTS["LEGEND_SIZE"],
     "text.usetex": True,
     "font.family": "serif",
     "font.serif": ["Computer Modern Roman"], # Overleaf font

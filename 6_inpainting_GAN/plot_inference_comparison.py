@@ -14,20 +14,34 @@ METRICS = {
 OUT_DIR = "inference_results/150vs200_plots"
 
 STYLE = {
-    "FONT_SIZE": 12,
+    "FONT_SIZE": 12, 
+    "TITLE_SIZE": 26,   
+    "LABEL_SIZE": 20,    
+    "TICK_SIZE": 12,     
+    "LEGEND_SIZE": 14,       
     "FONT_SCALE": 2.0,
     "WIDTH": 14,
     "HEIGHT": 7,
+    "POINT_SIZE": 3,
+    "LINE_WIDTH": 2.0,
     "DPI": 300,
 }
 
+# Set up plot style
 plt.rcParams.update({
     "font.size": STYLE["FONT_SIZE"],
     "figure.figsize": (STYLE["WIDTH"], STYLE["HEIGHT"]),
     "figure.dpi": STYLE["DPI"],
+    "lines.markersize": STYLE["POINT_SIZE"] * 2,
+    "lines.linewidth": STYLE["LINE_WIDTH"],
+    "axes.titlesize": STYLE["TITLE_SIZE"],
+    "axes.labelsize": STYLE["LABEL_SIZE"],
+    "xtick.labelsize": STYLE["TICK_SIZE"],
+    "ytick.labelsize": STYLE["TICK_SIZE"],
+    "legend.fontsize": STYLE["LEGEND_SIZE"],
     "text.usetex": True,
     "font.family": "serif",
-    "font.serif": ["Computer Modern Roman"],
+    "font.serif": ["Computer Modern Roman"], # Overleaf font
 })
 
 def load_all_runs(base_dir):
@@ -78,8 +92,9 @@ def plot_grouped_bar(summary_df, metric, ylabel):
     for i, setting in enumerate(EPOCH_DIRS):
         data = summary_df[summary_df["EpochSetting"] == setting]
         offsets = x - width / 2 if i == 0 else x + width / 2
+        label_clean = setting.replace("_epochs", "")
 
-        ax.bar(offsets, data["Median"], width=width, label=setting,
+        ax.bar(offsets, data["Median"], width=width, label=label_clean,
                yerr=[data["Median"] - data["Min"], data["Max"] - data["Median"]],
                capsize=5)
 
