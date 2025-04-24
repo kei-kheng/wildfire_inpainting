@@ -3,12 +3,22 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+STATISTIC = "median"  # or "mean"
+
 ALL_PARAMETERS = {
     "confidence_decay": ["0_01", "0_004", "0_002"],
     "confidence_reception": ["0_4", "0_6", "0_8"],
     "confidence_threshold": ["0_1", "0_2", "0_3"],
     "no_of_agents": ["1", "20", "40"],
     "noise": ["none", "gaussian", "salt_and_pepper"]
+}
+
+PARAMETER_LABELS = {
+    "confidence_decay": r"Confidence Decay $\alpha$",
+    "confidence_reception": r"Reception Confidence $\theta_{\mathrm{init}}$",
+    "confidence_threshold": r"Minimum Confidence $\theta_{\mathrm{min}}$",
+    "no_of_agents": r"Number of Agents",
+    "noise": r"Noise Type"
 }
 
 METRICS = {
@@ -27,6 +37,7 @@ STYLE = {
 }
 
 plt.rcParams.update({
+    "text.latex.preamble": r"\usepackage{amsmath}",
     "font.size": STYLE["FONT_SIZE"],
     "figure.figsize": (STYLE["WIDTH"], STYLE["HEIGHT"]),
     "figure.dpi": STYLE["DPI"],
@@ -75,18 +86,25 @@ def plot_metric(parameter, values, metric_key, label):
             continue
         combined = pd.concat(dfs)
         pivot = combined.groupby(["Step", "Run"])[metric_key].mean().unstack()
-        median = pivot.median(axis=1)
+
+        if STATISTIC == "mean":
+            line = pivot.mean(axis=1)
+        elif STATISTIC == "median":
+            line = pivot.median(axis=1)
+        else:
+            raise ValueError("STATISTIC must be 'mean' or 'median'")
+        
         min_ = pivot.min(axis=1)
         max_ = pivot.max(axis=1)
-        plt.plot(median.index, median.values, label=prettify_label(value, parameter))
-        plt.fill_between(median.index, min_, max_, alpha=0.2)
+        plt.plot(line.index, line.values, label=prettify_label(value, parameter))
+        plt.fill_between(line.index, min_, max_, alpha=0.2)
 
     plt.xlabel("Step")
     plt.ylabel(label)
-    plt.title(f"{label} vs Step")
-    plt.legend(title=parameter.replace('_', ' ').capitalize())
+    plt.title(f"{label} over Step ({STATISTIC.capitalize()})")
+    plt.legend(title=PARAMETER_LABELS.get(parameter, parameter))
     plt.tight_layout()
-    out_dir = f"results/plots/{parameter}"
+    out_dir = f"results/plots_{STATISTIC}/{parameter}"
     os.makedirs(out_dir, exist_ok=True)
     for ext in ["pdf", "png", "svg"]:
         plt.savefig(os.path.join(out_dir, f"{metric_key}_vs_step.{ext}"))
