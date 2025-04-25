@@ -276,8 +276,8 @@ def main():
                 colour = default_agent_colour
             agents[agent_key].draw(screen, scale, window_w * (1.0 / 4.0), colour)
 
-        # 3rd column - Confidence Matrix
-        text_surface = window_font.render("Agent 1's Confidence Matrix", False, (0, 0, 0))
+        # 3rd column - Confidence Map
+        text_surface = window_font.render("Agent 1's Confidence Map", False, (0, 0, 0))
         screen.blit(text_surface, (window_w * (2.0 / 4.0) + x_offset, 0))
 
         # Old implementation - Showing explored areas
