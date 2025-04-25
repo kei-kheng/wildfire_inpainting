@@ -15,8 +15,8 @@ PARAMETER_LABELS = {
     "confidence_decay": r"$\alpha$",
     "confidence_reception": r"$\theta_{\mathrm{init}}$",
     "confidence_threshold": r"$\theta_{\mathrm{min}}$",
-    "no_of_agents": r"Number of Agents",
-    "noise": r"Noise Type"
+    "no_of_agents": r"Number of agents",
+    "noise": r"Noise"
 }
 
 METRICS = {
