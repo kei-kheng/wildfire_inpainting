@@ -1,7 +1,0 @@
---yaml_path results/CAE/run19/config.yaml
---data_dir dataset
---model_type CAE
---output_dir run19
---coverage 0.15
---epochs 50
---batch_size 16

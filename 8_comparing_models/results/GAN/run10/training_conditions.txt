@@ -1,7 +1,0 @@
---yaml_path results/GAN/run10/config.yaml
---data_dir dataset
---model_type GAN
---output_dir run10
---coverage 0.15
---epochs 50
---batch_size 16

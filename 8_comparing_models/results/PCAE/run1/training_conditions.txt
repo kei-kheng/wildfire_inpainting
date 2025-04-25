@@ -1,7 +1,0 @@
---yaml_path results/PCAE/run1/config.yaml
---data_dir dataset
---model_type PCAE
---output_dir run1
---coverage 0.15
---epochs 50
---batch_size 16
