@@ -3,8 +3,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-STATISTIC = "median"  # or "mean"
-
 ALL_PARAMETERS = {
     "confidence_decay": ["0_01", "0_004", "0_002"],
     "confidence_reception": ["0_4", "0_6", "0_8"],
@@ -14,17 +12,17 @@ ALL_PARAMETERS = {
 }
 
 PARAMETER_LABELS = {
-    "confidence_decay": r"Confidence Decay $\alpha$",
-    "confidence_reception": r"Reception Confidence $\theta_{\mathrm{init}}$",
-    "confidence_threshold": r"Minimum Confidence $\theta_{\mathrm{min}}$",
+    "confidence_decay": r"$\alpha$",
+    "confidence_reception": r"$\theta_{\mathrm{init}}$",
+    "confidence_threshold": r"$\theta_{\mathrm{min}}$",
     "no_of_agents": r"Number of Agents",
     "noise": r"Noise Type"
 }
 
 METRICS = {
-    "MSE": "Mean Squared Error (MSE)",
-    "PSNR": "Peak Signal-to-Noise Ratio (PSNR), dB",
-    "SSIM": "Structural Similarity Index Measure (SSIM)",
+    "MSE": "MSE",
+    "PSNR": "PSNR (dB)",
+    "SSIM": "SSIM",
     "Percentage Explored": "Percentage Explored (\%)"
 }
 
@@ -35,6 +33,8 @@ STYLE = {
     "TICK_SIZE": 12, "LEGEND_SIZE": 10, "FONT_SCALE": 2.0,
     "WIDTH": 10, "HEIGHT": 8, "POINT_SIZE": 3, "LINE_WIDTH": 2.0, "DPI": 300
 }
+
+sns.set_theme(style="whitegrid", font_scale=STYLE["FONT_SCALE"])
 
 plt.rcParams.update({
     "text.latex.preamble": r"\usepackage{amsmath}",
@@ -52,7 +52,6 @@ plt.rcParams.update({
     "font.family": "serif",
     "font.serif": ["Computer Modern Roman"],
 })
-sns.set_theme(style="whitegrid", font_scale=STYLE["FONT_SCALE"])
 
 # Want to replace '_' with '.' for numbers
 def prettify_label(value, parameter):
@@ -86,14 +85,7 @@ def plot_metric(parameter, values, metric_key, label):
             continue
         combined = pd.concat(dfs)
         pivot = combined.groupby(["Step", "Run"])[metric_key].mean().unstack()
-
-        if STATISTIC == "mean":
-            line = pivot.mean(axis=1)
-        elif STATISTIC == "median":
-            line = pivot.median(axis=1)
-        else:
-            raise ValueError("STATISTIC must be 'mean' or 'median'")
-        
+        line = pivot.median(axis=1)
         min_ = pivot.min(axis=1)
         max_ = pivot.max(axis=1)
         plt.plot(line.index, line.values, label=prettify_label(value, parameter))
@@ -101,10 +93,10 @@ def plot_metric(parameter, values, metric_key, label):
 
     plt.xlabel("Step")
     plt.ylabel(label)
-    plt.title(f"{label} over Step ({STATISTIC.capitalize()})")
+    # plt.title(f"{label} over Step")
     plt.legend(title=PARAMETER_LABELS.get(parameter, parameter))
     plt.tight_layout()
-    out_dir = f"results/plots_{STATISTIC}/{parameter}"
+    out_dir = f"results/plots/{parameter}"
     os.makedirs(out_dir, exist_ok=True)
     for ext in ["pdf", "png", "svg"]:
         plt.savefig(os.path.join(out_dir, f"{metric_key}_vs_step.{ext}"))
