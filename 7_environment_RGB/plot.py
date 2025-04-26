@@ -4,10 +4,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 ALL_PARAMETERS = {
-    "confidence_decay": ["0_01", "0_004", "0_002"],
-    "confidence_reception": ["0_4", "0_6", "0_8"],
-    "confidence_threshold": ["0_1", "0_2", "0_3"],
-    "no_of_agents": ["1", "20", "40"],
+    # "confidence_decay": ["0_01", "0_004", "0_002"],
+    # "confidence_reception": ["0_4", "0_6", "0_8"],
+    # "confidence_threshold": ["0_1", "0_2", "0_3"],
+    # "no_of_agents": ["1", "20", "40"],
     "noise": ["none", "gaussian", "salt_and_pepper"]
 }
 
@@ -26,12 +26,20 @@ METRICS = {
     "Percentage Explored": "Percentage Explored (\%)"
 }
 
-RUNS = [f"run{i}" for i in range(1, 6)]
+RUNS = [f"run{i}" for i in range(1, 21)]
 
 STYLE = {
-    "FONT_SIZE": 12, "TITLE_SIZE": 16, "LABEL_SIZE": 14,
-    "TICK_SIZE": 12, "LEGEND_SIZE": 10, "FONT_SCALE": 2.0,
-    "WIDTH": 10, "HEIGHT": 8, "POINT_SIZE": 3, "LINE_WIDTH": 2.0, "DPI": 300
+    "FONT_SIZE": 16,
+    "TITLE_SIZE": 20,
+    "LABEL_SIZE": 20,
+    "TICK_SIZE": 16,
+    "LEGEND_SIZE": 20,
+    "FONT_SCALE": 2.0,
+    "WIDTH": 10,
+    "HEIGHT": 8,
+    "POINT_SIZE": 3,
+    "LINE_WIDTH": 2.0,
+    "DPI": 300,
 }
 
 sns.set_theme(style="whitegrid", font_scale=STYLE["FONT_SCALE"])
