@@ -4,10 +4,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 ALL_PARAMETERS = {
-    # "confidence_decay": ["0_01", "0_004", "0_002"],
-    # "confidence_reception": ["0_4", "0_6", "0_8"],
-    # "confidence_threshold": ["0_1", "0_2", "0_3"],
-    # "no_of_agents": ["1", "20", "40"],
+    "confidence_decay": ["0_01", "0_004", "0_002"],
+    "confidence_reception": ["0_4", "0_6", "0_8"],
+    "confidence_threshold": ["0_1", "0_2", "0_3"],
+    "no_of_agents": ["1", "20", "40"],
     "noise": ["none", "gaussian", "salt_and_pepper"]
 }
 
