@@ -81,6 +81,7 @@ def plot_combined_boxplots(df):
             ax.set_axisbelow(True)
 
         ax.set_ylabel(METRICS[metric])
+        ax.set_xlabel("Fire Scenario ID")
 
     # Remove legends from all subplots
     for ax in axes:
