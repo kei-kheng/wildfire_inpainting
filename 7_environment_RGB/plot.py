@@ -4,14 +4,16 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 ALL_PARAMETERS = {
-    "confidence_decay": ["0_01", "0_004", "0_002"],
-    "confidence_reception": ["0_4", "0_6", "0_8"],
-    "confidence_threshold": ["0_1", "0_2", "0_3"],
-    "no_of_agents": ["1", "20", "40"],
-    "noise": ["none", "gaussian", "salt_and_pepper"]
+    "0_single_agent_no_decay": ["no_noise", "gaussian_noise", "salt_and_pepper_noise"],
+    # "confidence_decay": ["0_01", "0_004", "0_002"],
+    # "confidence_reception": ["0_4", "0_6", "0_8"],
+    # "confidence_threshold": ["0_1", "0_2", "0_3"],
+    # "no_of_agents": ["1", "20", "40"],
+    # "noise": ["none", "gaussian", "salt_and_pepper"]
 }
 
 PARAMETER_LABELS = {
+    "0_single_agent_no_decay": r"Noise",
     "confidence_decay": r"$\alpha$",
     "confidence_reception": r"$\theta_{\mathrm{init}}$",
     "confidence_threshold": r"$\theta_{\mathrm{min}}$",
@@ -68,6 +70,12 @@ def prettify_label(value, parameter):
             "none": "None",
             "gaussian": "Gaussian",
             "salt_and_pepper": "Salt-and-pepper"
+        }.get(value, value)
+    elif parameter == "0_single_agent_no_decay":
+        return {
+            "no_noise": "None",
+            "gaussian_noise": "Gaussian",
+            "salt_and_pepper_noise": "Salt-and-pepper"
         }.get(value, value)
     else:
         return value.replace("_", ".")

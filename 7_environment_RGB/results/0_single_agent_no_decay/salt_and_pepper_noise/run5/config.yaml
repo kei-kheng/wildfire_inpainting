@@ -1,0 +1,11 @@
+env1_path: env_imgs\7\7_040.png
+env2_path: env_imgs\7\7_040.png
+
+env1_rotate: 0
+env2_rotate: 0
+model_path: models/150_epochs/run1/generator.pth
+no_of_agents: 1
+agent_confidence_decay: 0.00
+
+noise: salt_and_pepper
+output_dir: 0_single_agent_no_decay/salt_and_pepper_noise/run5

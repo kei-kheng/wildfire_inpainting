@@ -1,0 +1,11 @@
+env1_path: env_imgs\26\26_030.png
+env2_path: env_imgs\26\26_030.png
+
+env1_rotate: 0
+env2_rotate: 0
+model_path: models/150_epochs/run1/generator.pth
+no_of_agents: 1
+agent_confidence_decay: 0.00
+
+noise: none
+output_dir: 0_single_agent_no_decay/no_noise/run17

@@ -1,0 +1,23 @@
+Initial environment: env_imgs\5\5_060.png with 0 degree rotation
+Switched environment: env_imgs\5\5_060.png with 0 degree rotation
+--yaml_path results/0_single_agent_no_decay/salt_and_pepper_noise/run3/config.yaml
+--env1_path env_imgs\5\5_060.png
+--env1_rotate 0
+--env2_path env_imgs\5\5_060.png
+--env2_rotate 0
+--img_scaled_dim 320
+--model_path models/150_epochs/run1/generator.pth
+--no_of_agents 1
+--agent_patch_size 25
+--agent_comm_range 30
+--max_payload_size 90
+--noise salt_and_pepper
+--agent_compress False
+--agent_confidence_reception 0.6
+--agent_confidence_decay 0.0
+--agent_confidence_threshold 0.2
+--agent_policy random
+--agent_sample_points 4
+--log_comm False
+--steps 1000
+--output_dir 0_single_agent_no_decay/salt_and_pepper_noise/run3
