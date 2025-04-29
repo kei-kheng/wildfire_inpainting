@@ -1,0 +1,12 @@
+=== MSE ===
+Epoch: 150 epochs, Mean MSE: 0.0071
+Epoch: 200 epochs, Mean MSE: 0.0063
+
+=== PSNR ===
+Epoch: 150 epochs, Mean PSNR: 30.6417
+Epoch: 200 epochs, Mean PSNR: 31.1434
+
+=== SSIM ===
+Epoch: 150 epochs, Mean SSIM: 0.9440
+Epoch: 200 epochs, Mean SSIM: 0.9470
+

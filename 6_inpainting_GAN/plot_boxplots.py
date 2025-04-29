@@ -96,6 +96,20 @@ def plot_combined_boxplots(df):
         plt.savefig(os.path.join(OUT_DIR, f"combined_boxplots.{ext}"))
     plt.close()
 
+def calculate_mean(df):
+    os.makedirs(OUT_DIR, exist_ok=True)
+    output_path = os.path.join(OUT_DIR, "mean_results.txt")
+    
+    with open(output_path, "w") as f:
+        for metric in METRICS.keys():
+            f.write(f"=== {metric} ===\n")
+            grouped = df.groupby(["Epoch", "Folder"])[metric].mean()
+            epoch_means = grouped.groupby("Epoch").mean()  # Average across folders
+            for epoch, final_mean in epoch_means.items():
+                f.write(f"Epoch: {epoch}, Mean {metric}: {final_mean:.4f}\n")
+            f.write("\n")
+    
+    print(f"Mean results saved to: {output_path}")
 
 def main():
     df_all = pd.concat([load_all_runs(epoch) for epoch in EPOCH_DIRS], ignore_index=True)
@@ -103,6 +117,8 @@ def main():
 
     for metric, ylabel in METRICS.items():
         plot_combined_boxplots(df_all)
+    
+    calculate_mean(df_all)
 
     print("Inference comparison plots saved to:", OUT_DIR)
 
