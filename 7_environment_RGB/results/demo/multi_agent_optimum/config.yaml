@@ -1,0 +1,12 @@
+model_path: models/150_epochs/run1/generator.pth
+no_of_agents: 20
+
+max_payload_size: 90
+noise: gaussian
+agent_compress: True
+
+agent_confidence_reception: 0.8
+agent_confidence_decay: 0.002
+agent_confidence_threshold: 0.1
+
+output_dir: demo/multi_agent_optimum
